@@ -1,0 +1,50 @@
+{
+  "root": true,
+  "extends": ["next/core-web-vitals", "plugin:@typescript-eslint/recommended"],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["../../*"],
+            "message": "Use o alias @/ para sair da pasta atual: caminhos relativos longos quebram quando arquivos mudam de lugar."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/app/**/*.ts", "src/app/**/*.tsx", "src/modules/*/ui/**/*.ts", "src/modules/*/ui/**/*.tsx", "src/shared/ui/**/*.ts", "src/shared/ui/**/*.tsx"],
+      "excludedFiles": ["src/modules/*/ui/api.ts", "src/shared/ui/api-client.ts"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "CallExpression[callee.name='fetch']",
+            "message": "Não chame fetch aqui. Declare a operação em modules/<feature>/ui/api.ts — é lá que moram as URLs e o formato das respostas."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../../*"],
+                "message": "Use o alias @/ para sair da pasta atual: caminhos relativos longos quebram quando arquivos mudam de lugar."
+              }
+            ],
+            "paths": [
+              {
+                "name": "@/shared/ui/api-client",
+                "importNames": ["apiGet", "apiSend"],
+                "message": "apiGet/apiSend são o transporte usado pelas APIs de feature. Na tela, chame a função da feature (ex.: listMaterials). Importar ApiError aqui é permitido."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

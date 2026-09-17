@@ -1,0 +1,23 @@
+node_modules/
+.next/
+out/
+build/
+coverage/
+
+# Segredos e ambiente local — nunca versionados.
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Sistema e editor
+.DS_Store
+Thumbs.db
+*.log
+tsconfig.tsbuildinfo
+.vscode/
+.idea/
+
+# Configuração local de ferramentas de desenvolvimento
+.claude/

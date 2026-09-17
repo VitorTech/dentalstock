@@ -1,0 +1,53 @@
+{
+  "name": "dentalstock",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint --dir src --dir prisma",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "user:create": "tsx prisma/create-user.ts",
+    "tenant:create": "tsx prisma/create-tenant.ts",
+    "prisma:studio": "prisma studio",
+    "setup": "npm run db:up && npm run prisma:migrate && npm run prisma:seed",
+    "typecheck": "tsc --noEmit",
+    "arch": "depcruise src --config .dependency-cruiser.cjs",
+    "verify": "npm run typecheck && npm run lint && npm run arch && npm run test"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "lucide-react": "^0.441.0",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "dependency-cruiser": "^16.10.4",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.15",
+    "postcss": "^8.4.38",
+    "prisma": "^5.20.0",
+    "tailwindcss": "^3.4.4",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.2",
+    "vitest": "^2.1.9"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "description": "Controle de estoque odontológico por procedimento — Next.js, TypeScript, Prisma e PostgreSQL."
+}

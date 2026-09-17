@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Uma clínica. Todo dado do sistema pertence a um tenant e as consultas são
+/// sempre filtradas por tenantId — é o que garante isolamento entre clínicas.
+/// As preferências de tema vivem aqui para que cada uma tenha a sua.
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  themeMode   String   @default("system") // light | dark | system
+  accentColor String   @default("#0071e3")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users          User[]
+  materials      Material[]
+  instruments    Instrument[]
+  procedures     Procedure[]
+  suppliers      Supplier[]
+  stockMovements StockMovement[]
+  executions     ProcedureExecution[]
+}
+
+/// Papéis: OWNER é o administrador da PLATAFORMA (console de clínicas), não o
+/// dono da clínica — por isso não se concede pelo cadastro. Dentro da clínica,
+/// MEMBER tem acesso pleno e ASSISTANT é o perfil de auxiliar/ASB: executa e
+/// repõe, mas não altera o catálogo nem enxerga custo.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("MEMBER") // OWNER | MEMBER | ASSISTANT
+  tenantId     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  stockMovements StockMovement[]
+  executions     ProcedureExecution[]
+
+  @@index([tenantId])
+}
+
+/// Sessão persistida: o cookie guarda apenas um token opaco e aleatório, o que
+/// permite revogar acessos e não expõe dados no cliente.
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Contador de tentativas de login por chave ("user:<email>" ou "ip:<origem>").
+/// Mora no banco porque precisa valer para todas as instâncias da aplicação e
+/// sobreviver a reinício — em memória, um deploy zeraria o bloqueio.
+model LoginThrottle {
+  key            String    @id
+  failures       Int       @default(0)
+  firstFailureAt DateTime
+  blockedUntil   DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  /// Usado só pela limpeza dos contadores vencidos.
+  @@index([updatedAt])
+}
+
+model Material {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  unit      String // ex: un, ml, g, par, tubete, rolete
+  category  String?
+  imageUrl  String?
+  stock     Float    @default(0)
+  minStock  Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Custo de UMA unidade (a mesma de `unit`). Opcional: clínica que ainda não
+  /// levantou preço continua usando o sistema, e os relatórios de custo apenas
+  /// informam a cobertura parcial em vez de mostrar número errado.
+  unitCost  Float?
+  /// Validade do lote corrente. Material estéril e anestésico vencem, e a
+  /// vigilância sanitária cobra — a data mora no material porque a clínica
+  /// pequena repõe um lote de cada vez.
+  expiresAt DateTime?
+
+  supplierId String?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  procedureMaterials ProcedureMaterial[]
+  stockMovements     StockMovement[]
+
+  @@index([tenantId])
+  @@index([name])
+  @@index([supplierId])
+  @@index([tenantId, expiresAt])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  phone     String?
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  materials Material[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model Procedure {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  category    String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  materials      ProcedureMaterial[]
+  instruments    ProcedureInstrument[]
+  stockMovements StockMovement[]
+  executions     ProcedureExecution[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model ProcedureMaterial {
+  id          String @id @default(cuid())
+  procedureId String
+  materialId  String
+  quantity    Float
+
+  procedure Procedure @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+  material  Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([procedureId, materialId])
+}
+
+/// Instrumental é reutilizável e não sofre baixa ao finalizar procedimento, por
+/// isso não tem estoque mínimo: `stock` é o inventário da clínica, e só.
+model Instrument {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  category  String?
+  imageUrl  String?
+  stock     Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  procedureInstruments ProcedureInstrument[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model ProcedureInstrument {
+  id           String @id @default(cuid())
+  procedureId  String
+  instrumentId String
+  quantity     Float
+
+  procedure  Procedure  @relation(fields: [procedureId], references: [id], onDelete: Cascade)
+  instrument Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([procedureId, instrumentId])
+}
+
+/// Registro de um procedimento finalizado — a base do histórico da clínica.
+/// Os nomes são guardados como cópia (snapshot) de propósito: se um material
+/// for renomeado ou excluído depois, o histórico continua fiel ao que foi usado.
+model ProcedureExecution {
+  id            String   @id @default(cuid())
+  tenantId      String
+  procedureId   String?
+  procedureName String
+  category      String?
+  createdAt     DateTime @default(now())
+
+  /// Quem finalizou. Opcional porque o histórico anterior a este campo não tem
+  /// autor — inventar um seria pior do que assumir a lacuna.
+  userId   String?
+  userName String?
+
+  /// Agrupa os procedimentos finalizados juntos numa mesma consulta. Quem faz
+  /// dois procedimentos no mesmo atendimento gera dois registros (o custo e o
+  /// consumo são de cada um), ligados por este identificador.
+  sessionId String?
+
+  /// Estorno. A execução NÃO é apagada: some do saldo, permanece no histórico
+  /// marcada — auditoria não pode perder o que aconteceu, só registrar que foi
+  /// desfeito.
+  reversedAt     DateTime?
+  reversedByName String?
+
+  /// Custo total no momento da finalização (soma dos itens). Snapshot pelo mesmo
+  /// motivo dos nomes: mudar o preço de compra hoje não pode reescrever quanto
+  /// custou um procedimento do mês passado.
+  totalCost Float?
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  procedure Procedure? @relation(fields: [procedureId], references: [id], onDelete: SetNull)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  items          ProcedureExecutionItem[]
+  stockMovements StockMovement[]
+
+  @@index([tenantId, createdAt])
+  @@index([sessionId])
+}
+
+model ProcedureExecutionItem {
+  id          String  @id @default(cuid())
+  executionId String
+  kind        String // MATERIAL | INSTRUMENT
+  name        String
+  quantity    Float
+  unit        String?
+
+  /// Material de origem, quando ainda existe. É o que permite ao estorno saber
+  /// para onde devolver a quantidade; nulo aqui só significa "material excluído
+  /// depois", e o nome em snapshot mantém o histórico legível.
+  materialId String?
+  /// Custo unitário praticado naquele dia.
+  unitCost   Float?
+
+  execution ProcedureExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+}
+
+/// Toda alteração de estoque passa por aqui — consumo, entrada, ajuste, estorno
+/// e balanço. É o livro-razão do estoque: o saldo em `Material.stock` é o
+/// resultado, este modelo é a explicação.
+model StockMovement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  materialId  String
+  procedureId String?
+  quantity    Float // negativo = saída, positivo = entrada
+  type        String // CONSUMPTION | RESTOCK | ADJUSTMENT | REVERSAL
+  createdAt   DateTime @default(now())
+
+  /// Autor e justificativa. Ajuste manual sem motivo é exatamente o registro que
+  /// não responde nada quando o estoque não bate.
+  userId   String?
+  userName String?
+  note     String?
+
+  /// Custo unitário da ENTRADA. É daqui que sai o custo do material quando a
+  /// clínica repõe por um preço novo.
+  unitCost Float?
+
+  /// Execução que originou o movimento (consumo e estorno).
+  executionId String?
+
+  material  Material            @relation(fields: [materialId], references: [id])
+  procedure Procedure?          @relation(fields: [procedureId], references: [id])
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  execution ProcedureExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@index([materialId, createdAt])
+}
