@@ -29,7 +29,6 @@ import {
   RemoveTeamMemberUseCase,
   ResetTeamMemberPasswordUseCase,
 } from "@/modules/identity/application";
-import { PrismaLoginThrottleRepository } from "@/modules/identity/adapters/out/prisma/login-throttle.repository";
 import { PrismaSessionRepository } from "@/modules/identity/adapters/out/prisma/session.repository";
 import { PrismaUserRepository } from "@/modules/identity/adapters/out/prisma/user.repository";
 import { CookieTokenTransport } from "@/modules/identity/adapters/out/security/cookie-token-transport";
@@ -81,6 +80,7 @@ import { PrismaProcedureExecutionRepository } from "@/modules/clinical/adapters/
 import { GetDashboardUseCase } from "@/modules/analytics/application";
 
 import { prisma } from "@/shared/infrastructure/prisma";
+import { PrismaThrottleRepository } from "@/shared/infrastructure/throttle.repository";
 import { CryptoSecretGenerator, SystemClock } from "@/shared/infrastructure/system";
 
 // --- Outbound adapters (instantiated once per process) ---------------------
@@ -90,9 +90,11 @@ const secrets = new CryptoSecretGenerator();
 
 const tenants = new PrismaTenantRepository(prisma);
 
+const throttle = new PrismaThrottleRepository(prisma);
+
 const users = new PrismaUserRepository(prisma);
 const sessions = new PrismaSessionRepository(prisma);
-const loginThrottle = new PrismaLoginThrottleRepository(prisma);
+
 const hasher = new ScryptPasswordHasher();
 const tokens = new JwtTokenService();
 
@@ -116,7 +118,7 @@ export const container = {
   },
 
   identity: {
-    login: new LoginUseCase(users, sessions, hasher, tokens, secrets, clock, loginThrottle),
+    login: new LoginUseCase(users, sessions, hasher, tokens, secrets, clock, throttle),
     authenticate: new AuthenticateUseCase(tokens, sessions),
     logout: new LogoutUseCase(tokens, sessions),
     authorization: new AuthorizationService(),
@@ -170,6 +172,12 @@ export const container = {
   analytics: {
     getDashboard: new GetDashboardUseCase(materials, suppliers, consumption, executionCosts),
   },
+
+  /**
+   * Cross-cutting protections used by the HTTP edge, not by a single module:
+   * the attempt counter behind both the login limit and the write budget.
+   */
+  security: { throttle },
 
   /** Shared clock, for routes that need a deterministic "now". */
   clock,

@@ -5,17 +5,25 @@
  * what makes login testable without a database or a server.
  */
 import {
-  LOGIN_MAX_FAILURES_PER_ACCOUNT,
-  type LoginAttemptState,
-  LOGIN_MAX_FAILURES_PER_IP,
+  LOGIN_ACCOUNT_LIMITS,
+  LOGIN_IP_LIMITS,
   PlainPassword,
-  afterFailedAttempt,
+  loginAccountKey,
+  loginOriginKey,
+} from "@/modules/identity/domain";
+import type { Clock, SecretGenerator, ThrottleRepository } from "@/shared/application";
+import {
+  type AttemptState,
+  type AuthenticatedActor,
+  Email,
+  type ThrottleLimits,
+  TooManyRequestsError,
+  UnauthorizedError,
+  afterAttempt,
   secondsUntilUnblocked,
   tooManyAttemptsMessage,
-} from "@/modules/identity/domain";
-import type { Clock, SecretGenerator } from "@/shared/application";
-import { type AuthenticatedActor, Email, TooManyRequestsError, UnauthorizedError } from "@/shared/domain";
-import type { LoginThrottleRepository, PasswordHasher, SessionRepository, TokenService, UserRepository } from "../ports";
+} from "@/shared/domain";
+import type { PasswordHasher, SessionRepository, TokenService, UserRepository } from "../ports";
 
 const SESSION_TTL_DAYS = 30;
 
@@ -33,7 +41,7 @@ export class LoginUseCase {
     private readonly tokens: TokenService,
     private readonly secrets: SecretGenerator,
     private readonly clock: Clock,
-    private readonly throttle: LoginThrottleRepository
+    private readonly throttle: ThrottleRepository
   ) {}
 
   async execute(input: {
@@ -51,8 +59,9 @@ export class LoginUseCase {
     // Rate limit BEFORE comparing the password: a blocked request must not
     // cost a hash, or the defense becomes the attack (scrypt is expensive on
     // purpose).
-    const limits = this.limitsFor(email.value, input.ipAddress ?? null);
-    const counters = await this.loadCounters(limits);
+    const counters = await this.loadCounters(
+      this.countersFor(email.value, input.ipAddress ?? null)
+    );
     this.ensureNotBlocked(counters);
 
     const user = await this.users.findByEmail(email.value);
@@ -113,21 +122,21 @@ export class LoginUseCase {
    * With no known IP, the per-account limit remains — and that is the one
    * protecting a specific user's password, the likelier target.
    */
-  private limitsFor(email: string, ipAddress: string | null) {
-    const limits = [{ key: `user:${email}`, maxFailures: LOGIN_MAX_FAILURES_PER_ACCOUNT }];
-    if (ipAddress) {
-      limits.push({ key: `ip:${ipAddress}`, maxFailures: LOGIN_MAX_FAILURES_PER_IP });
-    }
-    return limits;
+  private countersFor(email: string, ipAddress: string | null) {
+    const keys: { key: string; limits: ThrottleLimits }[] = [
+      { key: loginAccountKey(email), limits: LOGIN_ACCOUNT_LIMITS },
+    ];
+    if (ipAddress) keys.push({ key: loginOriginKey(ipAddress), limits: LOGIN_IP_LIMITS });
+    return keys;
   }
 
-  private async loadCounters(limits: { key: string; maxFailures: number }[]) {
+  private async loadCounters(keys: { key: string; limits: ThrottleLimits }[]) {
     return Promise.all(
-      limits.map(async (limit) => ({ ...limit, state: await this.throttle.find(limit.key) }))
+      keys.map(async (k) => ({ ...k, state: await this.throttle.find(k.key) }))
     );
   }
 
-  private ensureNotBlocked(counters: { state: LoginAttemptState | null }[]): void {
+  private ensureNotBlocked(counters: { state: AttemptState | null }[]): void {
     const now = this.clock.now();
     const wait = Math.max(...counters.map((c) => secondsUntilUnblocked(c.state, now)), 0);
     // One message for account and IP alike: knowing WHICH limit was hit would
@@ -143,12 +152,12 @@ export class LoginUseCase {
    * here does not block the invalid-credentials answer.
    */
   private async registerFailure(
-    counters: { key: string; maxFailures: number; state: LoginAttemptState | null }[]
+    counters: { key: string; limits: ThrottleLimits; state: AttemptState | null }[]
   ): Promise<void> {
     const now = this.clock.now();
     await Promise.all(
       counters.map((counter) =>
-        this.throttle.save(counter.key, afterFailedAttempt(counter.state, now, counter.maxFailures))
+        this.throttle.save(counter.key, afterAttempt(counter.state, now, counter.limits))
       )
     );
   }

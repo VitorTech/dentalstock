@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSessionContext } from "@/server/auth";
 import TenantTheme from "@/modules/account/ui/TenantTheme";
@@ -14,9 +15,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getSessionContext();
   if (!session) redirect("/api/auth/expired");
 
+  // Nonce minted by the middleware: the theme script only runs when it carries
+  // the value the Content-Security-Policy expects.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <>
-      <TenantTheme mode={session.tenant.themeMode} accent={session.tenant.accentColor} />
+      <TenantTheme
+        mode={session.tenant.themeMode}
+        accent={session.tenant.accentColor}
+        nonce={nonce}
+      />
       {children}
     </>
   );

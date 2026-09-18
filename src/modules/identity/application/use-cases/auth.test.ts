@@ -11,14 +11,12 @@ import {
   LOGIN_BLOCK_MS,
   LOGIN_MAX_FAILURES_PER_ACCOUNT,
   LOGIN_MAX_FAILURES_PER_IP,
-  type LoginAttemptState,
 } from "@/modules/identity/domain";
-import type { Clock, SecretGenerator } from "@/shared/application";
-import { TooManyRequestsError, UnauthorizedError, type Uuid } from "@/shared/domain";
+import type { Clock, SecretGenerator, ThrottleRepository } from "@/shared/application";
+import { type AttemptState, TooManyRequestsError, UnauthorizedError, type Uuid } from "@/shared/domain";
 import type {
   AccessTokenClaims,
   IssuedToken,
-  LoginThrottleRepository,
   PasswordHasher,
   SessionRepository,
   TokenService,
@@ -73,13 +71,13 @@ class FakeTokens implements TokenService {
   }
 }
 
-class InMemoryThrottle implements LoginThrottleRepository {
-  private readonly estados = new Map<string, LoginAttemptState>();
+class InMemoryThrottle implements ThrottleRepository {
+  private readonly estados = new Map<string, AttemptState>();
 
-  async find(key: string): Promise<LoginAttemptState | null> {
+  async find(key: string): Promise<AttemptState | null> {
     return this.estados.get(key) ?? null;
   }
-  async save(key: string, state: LoginAttemptState): Promise<void> {
+  async save(key: string, state: AttemptState): Promise<void> {
     this.estados.set(key, state);
   }
   async clear(key: string): Promise<void> {
@@ -156,8 +154,8 @@ describe("LoginUseCase", () => {
 
     await failLogin(1);
 
-    expect(throttle.keys()).toEqual([`ip:${IP}`, `user:${EMAIL}`]);
-    expect(throttle.failures(`user:${EMAIL}`)).toBe(1);
+    expect(throttle.keys()).toEqual([`login:ip:${IP}`, `login:user:${EMAIL}`]);
+    expect(throttle.failures(`login:user:${EMAIL}`)).toBe(1);
   });
 
   it("blocks the account past the limit — even with the right password", async () => {
@@ -214,8 +212,8 @@ describe("LoginUseCase", () => {
       .execute({ email: "ninguem@clinica.com", password: "x".repeat(10), ipAddress: IP })
       .catch((e) => expect(e).toBeInstanceOf(UnauthorizedError));
 
-    expect(throttle.failures("user:ninguem@clinica.com")).toBe(1);
-    expect(throttle.failures(`ip:${IP}`)).toBe(1);
+    expect(throttle.failures("login:user:ninguem@clinica.com")).toBe(1);
+    expect(throttle.failures(`login:ip:${IP}`)).toBe(1);
   });
 
   it("with no known IP, the per-account limit still applies", async () => {
@@ -223,7 +221,7 @@ describe("LoginUseCase", () => {
 
     await failLogin(LOGIN_MAX_FAILURES_PER_ACCOUNT, null);
 
-    expect(throttle.keys()).toEqual([`user:${EMAIL}`]);
+    expect(throttle.keys()).toEqual([`login:user:${EMAIL}`]);
     await expect(
       login.execute({ email: EMAIL, password: PASSWORD, ipAddress: null })
     ).rejects.toBeInstanceOf(TooManyRequestsError);
@@ -245,7 +243,7 @@ describe("LoginUseCase", () => {
     // A second sequential round closes the net even in the worst case.
     await failUntilBlocked(login, LOGIN_MAX_FAILURES_PER_ACCOUNT);
 
-    expect(throttle.failures(`user:${EMAIL}`)).toBeGreaterThan(0);
+    expect(throttle.failures(`login:user:${EMAIL}`)).toBeGreaterThan(0);
     await expect(
       login.execute({ email: EMAIL, password: PASSWORD, ipAddress: IP })
     ).rejects.toBeInstanceOf(TooManyRequestsError);

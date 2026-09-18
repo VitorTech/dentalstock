@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import Providers from "@/app/_shell/Providers";
 import SiteFooter from "@/app/_shell/SiteFooter";
@@ -41,17 +42,21 @@ const SYSTEM_THEME_SCRIPT = `
 /**
  * Root layout — deliberately WITHOUT reading the session.
  *
- * Reading the cookie here would force Next to render EVERY page on demand,
- * including the public one, which does not depend on who is signed in. The
- * effect would show up straight in TTFB, and therefore in LCP. Per-clinic
- * customization (theme and color) lives in the authenticated layouts, which
- * are dynamic anyway.
+ * Reading the cookie here would couple every page to who is signed in.
+ * Per-clinic customization (theme and color) lives in the authenticated
+ * layouts instead.
+ *
+ * It does read the CSP nonce created by the middleware: the inline theme
+ * script only runs when it carries that nonce, which is the whole point of the
+ * policy. That read is what makes the pages render on demand.
  */
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="pt-BR" data-theme="light" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: SYSTEM_THEME_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SYSTEM_THEME_SCRIPT }} />
       </head>
       <body className="font-sans antialiased">
         <Providers>

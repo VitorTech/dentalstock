@@ -1,5 +1,5 @@
 /** Identity ports: user and session persistence, password hashing and tokens. */
-import type { LoginAttemptState, User, UserCredentials } from "@/modules/identity/domain";
+import type { User, UserCredentials } from "@/modules/identity/domain";
 import type { UserRole, Uuid } from "@/shared/domain";
 
 export interface UserRepository {
@@ -29,24 +29,6 @@ export interface SessionRepository {
   revoke(tokenId: string): Promise<void>;
   revokeAllForUser(userId: Uuid): Promise<void>;
   deleteExpired(): Promise<number>;
-}
-
-/**
- * Login attempt counters.
- *
- * A port separate from the user repository on purpose: the counter exists for
- * e-mails that have no account at all (which is precisely what an attack is
- * probing for), so it does not belong to the user aggregate.
- *
- * The implementation must be shared by every application instance and survive
- * restarts — an in-memory counter resets on each deploy, exactly when a slow
- * attack would benefit.
- */
-export interface LoginThrottleRepository {
-  find(key: string): Promise<LoginAttemptState | null>;
-  save(key: string, state: LoginAttemptState): Promise<void>;
-  /** Drops the counter (successful login). */
-  clear(key: string): Promise<void>;
 }
 
 /** Password hashing. The implementation picks algorithm and parameters. */

@@ -123,7 +123,7 @@ module.exports = {
         path: [
           "^src/modules/[^/]+/application/use-cases/",
           "^src/modules/[^/]+/adapters/out/",
-          "^src/shared/infrastructure/(prisma|system)\\.ts$",
+          "^src/shared/infrastructure/(prisma|system|throttle\\.repository)\\.ts$",
         ],
       },
     },

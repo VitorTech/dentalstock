@@ -1,54 +1,60 @@
 import { describe, expect, it } from "vitest";
 import {
-  LOGIN_BLOCK_MS,
-  LOGIN_WINDOW_MS,
-  afterFailedAttempt,
+  afterAttempt,
   secondsUntilUnblocked,
+  type ThrottleLimits,
   tooManyAttemptsMessage,
 } from "./throttle";
 
 const NOW = new Date("2026-09-17T10:00:00.000Z");
-const LIMIT = 3;
+const WINDOW_MS = 15 * 60 * 1000;
+const BLOCK_MS = 15 * 60 * 1000;
 
-describe("login attempt limit", () => {
+const limits = (maxAttempts: number): ThrottleLimits => ({
+  windowMs: WINDOW_MS,
+  blockMs: BLOCK_MS,
+  maxAttempts,
+});
+
+describe("attempt limiting", () => {
   it("the first failure opens the window without blocking", () => {
-    const state = afterFailedAttempt(null, NOW, LIMIT);
+    const state = afterAttempt(null, NOW, limits(3));
 
     expect(state).toEqual({ failures: 1, firstFailureAt: NOW, blockedUntil: null });
     expect(secondsUntilUnblocked(state, NOW)).toBe(0);
   });
 
   it("blocks on reaching the limit, not after it", () => {
-    let state = afterFailedAttempt(null, NOW, LIMIT);
-    state = afterFailedAttempt(state, NOW, LIMIT);
+    let state = afterAttempt(null, NOW, limits(3));
+    state = afterAttempt(state, NOW, limits(3));
     expect(state.blockedUntil).toBeNull();
 
-    state = afterFailedAttempt(state, NOW, LIMIT);
-    expect(state.failures).toBe(LIMIT);
-    expect(secondsUntilUnblocked(state, NOW)).toBe(LOGIN_BLOCK_MS / 1000);
+    state = afterAttempt(state, NOW, limits(3));
+    expect(state.failures).toBe(3);
+    expect(secondsUntilUnblocked(state, NOW)).toBe(BLOCK_MS / 1000);
   });
 
   it("an old failure does not count: the window restarts", () => {
-    const antigo = afterFailedAttempt(null, NOW, LIMIT);
-    const depois = new Date(NOW.getTime() + LOGIN_WINDOW_MS + 1);
+    const old = afterAttempt(null, NOW, limits(3));
+    const later = new Date(NOW.getTime() + WINDOW_MS + 1);
 
-    const state = afterFailedAttempt(antigo, depois, LIMIT);
+    const state = afterAttempt(old, later, limits(3));
 
-    expect(state).toEqual({ failures: 1, firstFailureAt: depois, blockedUntil: null });
+    expect(state).toEqual({ failures: 1, firstFailureAt: later, blockedUntil: null });
   });
 
   it("the block clears itself once the deadline passes", () => {
-    let state = afterFailedAttempt(null, NOW, 1);
-    const durante = new Date(NOW.getTime() + LOGIN_BLOCK_MS - 1000);
-    const depois = new Date(NOW.getTime() + LOGIN_BLOCK_MS + 1000);
+    let state = afterAttempt(null, NOW, limits(1));
+    const during = new Date(NOW.getTime() + BLOCK_MS - 1000);
+    const later = new Date(NOW.getTime() + BLOCK_MS + 1000);
 
-    expect(secondsUntilUnblocked(state, durante)).toBe(1);
-    expect(secondsUntilUnblocked(state, depois)).toBe(0);
+    expect(secondsUntilUnblocked(state, during)).toBe(1);
+    expect(secondsUntilUnblocked(state, later)).toBe(0);
 
     // And a new failure during the block does not extend the original deadline —
     // otherwise an attacker would keep the legitimate user locked out forever.
-    state = afterFailedAttempt(state, durante, 1);
-    expect(secondsUntilUnblocked(state, depois)).toBe(0);
+    state = afterAttempt(state, during, limits(1));
+    expect(secondsUntilUnblocked(state, later)).toBe(0);
   });
 
   it("with no counter, nothing blocks", () => {

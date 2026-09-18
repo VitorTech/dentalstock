@@ -64,10 +64,11 @@ model Session {
   @@index([userId])
 }
 
-/// Login attempt counter per key ("user:<email>" or "ip:<origin>").
-/// It lives in the database because it must hold for every application
-/// instance and survive restarts — in memory, a deploy would clear the block.
-model LoginThrottle {
+/// Attempt counter per key ("login:user:<email>", "login:ip:<origin>",
+/// "write:ip:<origin>"). It lives in the database because it must hold for
+/// every application instance and survive restarts — in memory, a deploy would
+/// clear the block.
+model ThrottleCounter {
   key            String    @id
   failures       Int       @default(0)
   firstFailureAt DateTime

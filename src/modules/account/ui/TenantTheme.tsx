@@ -12,18 +12,23 @@ import type { ThemeMode } from "@/modules/account/domain";
  * page content paints. That is why someone who picked the dark theme never
  * sees the light one flash first.
  *
- * Security note: `mode` and `accent` come from the database, but were
+ * Security notes: `mode` and `accent` come from the database, but were
  * validated on write (ThemeMode is a closed union; the color goes through the
  * HexColor value object). They are still serialized with JSON.stringify rather
  * than interpolated directly — that is what stops an unexpected value from
- * closing the string and becoming code.
+ * closing the string and becoming code. The `nonce` comes from the layout and
+ * is what allows this script to run under the Content-Security-Policy; without
+ * it the browser refuses the tag, which is exactly the intended behavior for
+ * any inline script the application did not emit itself.
  */
 export default function TenantTheme({
   mode,
   accent,
+  nonce,
 }: {
   mode: ThemeMode;
   accent: string;
+  nonce?: string;
 }) {
   const script = `
 (function(){
@@ -36,5 +41,5 @@ export default function TenantTheme({
   } catch (e) {}
 })();`;
 
-  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+  return <script nonce={nonce} dangerouslySetInnerHTML={{ __html: script }} />;
 }
