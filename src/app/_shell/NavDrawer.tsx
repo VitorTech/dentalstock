@@ -23,16 +23,16 @@ type Item = {
   href: string;
   label: string;
   icon: typeof BarChart3;
-  /** Escondido do auxiliar, que receberia 403 ao abrir. */
+  /** Hidden from the assistant, who would get a 403 on opening it. */
   managerOnly?: boolean;
 };
 
 /**
- * Navegação agrupada por assunto.
+ * Navigation grouped by subject.
  *
- * O rótulo de seção existe porque a lista cresceu: destinos numa coluna
- * corrida viram uma parede de texto, e é justamente isso que fazia o menu
- * suspenso anterior parecer grande demais.
+ * The section labels exist because the list grew: destinations in one running
+ * column become a wall of text, which is exactly what made the previous
+ * dropdown menu feel oversized.
  */
 const GROUPS: { label: string | null; items: Item[] }[] = [
   {
@@ -61,11 +61,11 @@ const GROUPS: { label: string | null; items: Item[] }[] = [
 ];
 
 /**
- * Navegação lateral.
+ * Side navigation.
  *
- * Substitui o menu suspenso do cabeçalho: a lista flutuante cobria boa parte
- * da tela. Numa gaveta, o espaço vertical é natural e a lista cabe agrupada,
- * sem competir com o conteúdo.
+ * It replaces the header dropdown: the floating list covered a good part of
+ * the screen. In a drawer, vertical space is natural and the grouped list
+ * fits without competing with the content.
  */
 export default function NavDrawer({
   open,
@@ -85,13 +85,13 @@ export default function NavDrawer({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  // Enquanto o papel não chegou da API, mostra a versão completa: esconder e
-  // reexibir itens produz um salto visual pior que um clique que o servidor
-  // barra de qualquer forma.
+  // While the role has not arrived from the API, show the full version: hiding
+  // and re-showing items produces a visual jump worse than a click the server
+  // would refuse anyway.
   const isManager = userRole !== "ASSISTANT";
 
-  // Navegar fecha a gaveta — cobre tanto o clique num item quanto o botão
-  // "voltar" do navegador.
+  // Navigating closes the drawer — this covers both clicking an item and the
+  // browser's back button.
   useEffect(() => {
     onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -105,7 +105,7 @@ export default function NavDrawer({
     };
     document.addEventListener("keydown", onKey);
 
-    // Trava a rolagem do fundo: sem isso o conteúdo desliza atrás da gaveta.
+    // Locks background scrolling: without it the content slides behind the drawer.
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 

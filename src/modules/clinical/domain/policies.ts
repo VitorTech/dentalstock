@@ -1,27 +1,27 @@
 /**
- * Políticas de atendimento: consumo, custo e estorno.
+ * Clinical policies: consumption, cost and reversal.
  *
- * Regra central do produto: material é consumido, instrumental não.
+ * Core product rule: materials are consumed, instruments are not.
  */
 import type { Material, Procedure } from "@/modules/catalog/domain";
 import { BusinessRuleError, toCents } from "@/shared/domain";
 import type { ExecutionItem, ProcedureExecution } from "./entities";
 
 export interface CostSummary {
-  /** Custo apurado com os itens que TÊM preço cadastrado. */
+  /** Cost computed from the items that DO have a price. */
   total: number;
-  /** Itens sem custo — a tela precisa dizer que o total é parcial. */
+  /** Items without cost — the screen must say the total is partial. */
   missing: number;
-  /** Total de itens considerados. */
+  /** Total items considered. */
   counted: number;
 }
 
 /**
- * Custo de um conjunto de itens de execução.
+ * Cost of a set of execution items.
  *
- * Instrumental não entra: ele é reutilizável, então seu preço é investimento em
- * patrimônio, não custo do procedimento. Somá-lo faria uma extração parecer dez
- * vezes mais cara do que é.
+ * Instruments are excluded: they are reusable, so their price is an investment
+ * in assets, not a cost of the procedure. Adding them would make an extraction
+ * look ten times more expensive than it is.
  */
 export function summarizeCost(items: Pick<ExecutionItem, "kind" | "quantity" | "unitCost">[]): CostSummary {
   let total = 0;
@@ -42,16 +42,17 @@ export function summarizeCost(items: Pick<ExecutionItem, "kind" | "quantity" | "
 }
 
 export interface ReversalPlan {
-  /** Quantidades a devolver ao estoque. */
+  /** Quantities to return to stock. */
   returns: { materialId: string; quantity: number }[];
 }
 
 /**
- * Calcula a devolução de uma execução estornada.
+ * Computes the return of a reversed execution.
  *
- * Só materiais voltam — instrumental nunca saiu do estoque, então devolvê-lo
- * criaria unidades do nada. Itens cujo material foi excluído depois são
- * ignorados: não há para onde devolver, e o registro histórico permanece.
+ * Only materials come back — an instrument never left the stock, so returning
+ * it would create units out of thin air. Items whose material was deleted
+ * afterwards are skipped: there is nowhere to return them, and the historical
+ * record stays.
  */
 export function planReversal(execution: ProcedureExecution): ReversalPlan {
   if (execution.reversedAt !== null) {
@@ -85,32 +86,32 @@ export interface ConsumptionLine {
 }
 
 export interface PlannedConsumption {
-  /** Baixas a aplicar no estoque. */
+  /** Deductions to apply to stock. */
   deductions: { materialId: string; quantity: number; name: string; unit: string }[];
-  /** Itens registrados no histórico (inclui instrumentais, que não baixam). */
+  /** Items recorded in history (including instruments, which do not deduct). */
   historyItems: {
     kind: "MATERIAL" | "INSTRUMENT";
     name: string;
     quantity: number;
     unit: string | null;
-    /** Preservado para o estorno saber a quem devolver. */
+    /** Kept so a reversal knows what to return. */
     materialId: string | null;
-    /** Custo do dia, congelado junto com o nome. */
+    /** The day's cost, frozen together with the name. */
     unitCost: number | null;
   }[];
-  /** Custo do procedimento no momento da finalização. */
+  /** Procedure cost at the moment of finalization. */
   cost: CostSummary;
 }
 
 /**
- * Calcula o efeito de finalizar um procedimento, sem tocar em banco.
+ * Computes the effect of finalizing a procedure, without touching a database.
  *
- * Regra central do produto: **material é consumido, instrumental não**.
- * Instrumental é reutilizável — entra no histórico como checklist do que foi
- * preparado, mas jamais sofre baixa de estoque.
+ * Core product rule: **materials are consumed, instruments are not**. An
+ * instrument is reusable — it enters history as a checklist of what was
+ * prepared, but never has its stock deducted.
  *
- * Lança BusinessRuleError se algum material não pertencer ao conjunto
- * informado; devolve as faltas para o chamador decidir o que fazer.
+ * Throws BusinessRuleError when a material is missing from the provided set;
+ * shortages are returned so the caller decides what to do.
  */
 export function planConsumption(
   procedure: Pick<Procedure, "instruments">,
@@ -162,8 +163,8 @@ export function planConsumption(
       materialId: d.materialId,
       unitCost: byId.get(d.materialId)?.unitCost ?? null,
     })),
-    // Instrumentais: histórico sim, baixa de estoque não — e, pelo mesmo
-    // motivo, custo não: eles voltam para a bancada.
+    // Instruments: history yes, stock deduction no — and, for the same reason,
+    // no cost either: they go back to the bench.
     ...procedure.instruments.map((pi) => ({
       kind: "INSTRUMENT" as const,
       name: pi.instrument.name,

@@ -7,8 +7,8 @@ export type BarItem = {
   suffix?: string;
 };
 
-/** Ranking em barras horizontais (estilo "bar list"), leve e sem dependências.
- * A barra usa a cor de destaque atual do tema. */
+/** Horizontal bar ranking ("bar list" style), light and dependency-free.
+ * The bar uses the theme's current accent color. */
 export default function BarList({ items }: { items: BarItem[] }) {
   const max = Math.max(1, ...items.map((i) => i.value));
 

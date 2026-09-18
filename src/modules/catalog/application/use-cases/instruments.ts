@@ -1,4 +1,4 @@
-/** Casos de uso de instrumentais. */
+/** Instrument use cases. */
 import { ImageUrl, type Instrument } from "@/modules/catalog/domain";
 import { NonEmptyText, NotFoundError, StockLevel, type Uuid, ValidationError } from "@/shared/domain";
 import type { InstrumentRepository } from "../ports";
@@ -25,8 +25,8 @@ export class CreateInstrumentUseCase {
       name: name.value,
       category: NonEmptyText.optional(input.category, "categoria"),
       imageUrl: ImageUrl.optional(input.imageUrl),
-      // Estoque é opcional no cadastro: quem ainda não contou o inventário
-      // registra o instrumental agora e informa a quantidade depois.
+      // Stock is optional at registration: a clinic that has not counted its
+      // inventory yet registers the instrument now and fills the number later.
       stock: input.stock === undefined ? 0 : StockLevel.create(input.stock).value,
     });
   }
@@ -39,7 +39,7 @@ export class UpdateInstrumentStockUseCase {
     const existing = await this.instruments.findById(tenantId, id);
     if (!existing) throw new NotFoundError("Instrumental não encontrado.");
 
-    // Quantidade é o único campo editável do inventário de instrumentais.
+    // Quantity is the only editable field of the instrument inventory.
     if (input.stock === undefined) throw new ValidationError("Nada para atualizar.");
 
     return this.instruments.update(tenantId, id, {

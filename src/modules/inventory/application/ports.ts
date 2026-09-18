@@ -1,32 +1,32 @@
 /**
- * Portas do estoque.
+ * Inventory ports.
  *
- * `StockMovementRepository.register` existe como operação única — e não como
- * "atualiza saldo" e "grava movimento" separados — porque saldo e explicação
- * precisam mudar juntos.
+ * `StockMovementRepository.register` exists as a single operation — rather
+ * than separate "update balance" and "write movement" calls — because the
+ * balance and its explanation must change together.
  */
 import type { Material } from "@/modules/catalog/domain";
 import type { StockMovement, StockMovementType } from "@/modules/inventory/domain";
 import type { Uuid } from "@/shared/domain";
 
 /**
- * Livro-razão do estoque.
+ * The stock ledger.
  *
- * `register` existe como porta própria — em vez de "atualiza estoque" e "grava
- * movimento" separados — porque saldo e explicação precisam mudar juntos. Um
- * estoque alterado sem movimento correspondente é exatamente o registro que
- * ninguém consegue auditar depois.
+ * `register` is its own port — instead of separate "update stock" and "write
+ * movement" calls — because the balance and its explanation must change
+ * together. Stock changed without a matching movement is precisely the record
+ * nobody can audit later.
  */
 export interface StockMovementRepository {
   register(input: {
     tenantId: Uuid;
     materialId: Uuid;
-    /** Assinado: negativo sai, positivo entra. */
+    /** Signed: negative leaves, positive enters. */
     quantity: number;
     type: StockMovementType;
     note: string | null;
     unitCost: number | null;
-    /** Novo custo do material, já calculado pela política. */
+    /** New material cost, already computed by the policy. */
     newMaterialCost?: number | null;
     userId: Uuid | null;
     userName: string | null;
@@ -43,14 +43,14 @@ export interface StockMovementRepository {
 }
 
 /**
- * Relatórios de consumo real (movimentos de consumo não estornados).
+ * Reports of real consumption (non-reversed consumption movements).
  *
- * Porta do estoque, e não do painel: a lista de compras depende dela, e o
- * painel apenas a compõe.
+ * An inventory port, not a dashboard one: inventory figures depend on it, and
+ * the dashboard merely composes it.
  */
 export interface ConsumptionReport {
   consumptionByMaterial(tenantId: Uuid): Promise<{ materialId: Uuid; total: number }[]>;
-  /** Consumo por material dentro de uma janela — base da sugestão de compra. */
+  /** Consumption per material within a window — the basis for restocking. */
   consumptionByMaterialSince(
     tenantId: Uuid,
     days: number

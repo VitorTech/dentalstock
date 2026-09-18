@@ -1,13 +1,13 @@
 /**
- * Raiz de composição.
+ * Composition root.
  *
- * É o ÚNICO lugar do sistema que conhece implementações concretas: casos de uso
- * recebem portas, e quem escolhe o adaptador é este arquivo. Trocar Prisma por
- * outro banco, ou o hash de senha por outro algoritmo, é uma edição aqui.
+ * The ONLY place in the system that knows concrete implementations: use cases
+ * receive ports, and this file picks the adapters. Swapping Prisma for another
+ * database, or the password hash for another algorithm, is one edit here.
  *
- * `server-only` garante a fronteira na prática: se um componente de cliente
- * importar este módulo (direta ou indiretamente), o build falha em vez de
- * empacotar credenciais e SQL no navegador.
+ * `server-only` enforces the boundary in practice: if a client component
+ * imports this module (directly or not), the build fails instead of bundling
+ * credentials and SQL into the browser.
  */
 import "server-only";
 
@@ -83,7 +83,7 @@ import { GetDashboardUseCase } from "@/modules/analytics/application";
 import { prisma } from "@/shared/infrastructure/prisma";
 import { CryptoSecretGenerator, SystemClock } from "@/shared/infrastructure/system";
 
-// --- Adaptadores de saída (instanciados uma vez por processo) ---------------
+// --- Outbound adapters (instantiated once per process) ---------------------
 
 const clock = new SystemClock();
 const secrets = new CryptoSecretGenerator();
@@ -107,7 +107,7 @@ const consumption = new PrismaConsumptionReport(prisma);
 const executions = new PrismaProcedureExecutionRepository(prisma);
 const executionCosts = new PrismaExecutionCostReport(prisma);
 
-// --- Casos de uso, por módulo -----------------------------------------------
+// --- Use cases, by module --------------------------------------------------
 
 export const container = {
   account: {
@@ -126,7 +126,7 @@ export const container = {
     changeTeamMemberRole: new ChangeTeamMemberRoleUseCase(users, sessions),
     removeTeamMember: new RemoveTeamMemberUseCase(users),
     resetTeamMemberPassword: new ResetTeamMemberPasswordUseCase(users, sessions, hasher),
-    /** Criado por requisição: `cookies()` depende do contexto atual. */
+    /** Created per request: `cookies()` depends on the current context. */
     tokenTransport: () => new CookieTokenTransport(),
   },
 
@@ -171,6 +171,6 @@ export const container = {
     getDashboard: new GetDashboardUseCase(materials, suppliers, consumption, executionCosts),
   },
 
-  /** Relógio compartilhado, para rotas que precisam de "agora" determinístico. */
+  /** Shared clock, for routes that need a deterministic "now". */
   clock,
 } as const;

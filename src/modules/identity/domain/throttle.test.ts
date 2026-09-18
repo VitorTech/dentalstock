@@ -7,56 +7,56 @@ import {
   tooManyAttemptsMessage,
 } from "./throttle";
 
-const AGORA = new Date("2026-09-17T10:00:00.000Z");
-const LIMITE = 3;
+const NOW = new Date("2026-09-17T10:00:00.000Z");
+const LIMIT = 3;
 
-describe("limite de tentativas de login", () => {
-  it("a primeira falha abre a janela sem bloquear", () => {
-    const estado = afterFailedAttempt(null, AGORA, LIMITE);
+describe("login attempt limit", () => {
+  it("the first failure opens the window without blocking", () => {
+    const state = afterFailedAttempt(null, NOW, LIMIT);
 
-    expect(estado).toEqual({ failures: 1, firstFailureAt: AGORA, blockedUntil: null });
-    expect(secondsUntilUnblocked(estado, AGORA)).toBe(0);
+    expect(state).toEqual({ failures: 1, firstFailureAt: NOW, blockedUntil: null });
+    expect(secondsUntilUnblocked(state, NOW)).toBe(0);
   });
 
-  it("bloqueia ao alcançar o limite, não depois dele", () => {
-    let estado = afterFailedAttempt(null, AGORA, LIMITE);
-    estado = afterFailedAttempt(estado, AGORA, LIMITE);
-    expect(estado.blockedUntil).toBeNull();
+  it("blocks on reaching the limit, not after it", () => {
+    let state = afterFailedAttempt(null, NOW, LIMIT);
+    state = afterFailedAttempt(state, NOW, LIMIT);
+    expect(state.blockedUntil).toBeNull();
 
-    estado = afterFailedAttempt(estado, AGORA, LIMITE);
-    expect(estado.failures).toBe(LIMITE);
-    expect(secondsUntilUnblocked(estado, AGORA)).toBe(LOGIN_BLOCK_MS / 1000);
+    state = afterFailedAttempt(state, NOW, LIMIT);
+    expect(state.failures).toBe(LIMIT);
+    expect(secondsUntilUnblocked(state, NOW)).toBe(LOGIN_BLOCK_MS / 1000);
   });
 
-  it("falha antiga não conta: a janela recomeça", () => {
-    const antigo = afterFailedAttempt(null, AGORA, LIMITE);
-    const depois = new Date(AGORA.getTime() + LOGIN_WINDOW_MS + 1);
+  it("an old failure does not count: the window restarts", () => {
+    const antigo = afterFailedAttempt(null, NOW, LIMIT);
+    const depois = new Date(NOW.getTime() + LOGIN_WINDOW_MS + 1);
 
-    const estado = afterFailedAttempt(antigo, depois, LIMITE);
+    const state = afterFailedAttempt(antigo, depois, LIMIT);
 
-    expect(estado).toEqual({ failures: 1, firstFailureAt: depois, blockedUntil: null });
+    expect(state).toEqual({ failures: 1, firstFailureAt: depois, blockedUntil: null });
   });
 
-  it("o bloqueio termina sozinho quando o prazo passa", () => {
-    let estado = afterFailedAttempt(null, AGORA, 1);
-    const durante = new Date(AGORA.getTime() + LOGIN_BLOCK_MS - 1000);
-    const depois = new Date(AGORA.getTime() + LOGIN_BLOCK_MS + 1000);
+  it("the block clears itself once the deadline passes", () => {
+    let state = afterFailedAttempt(null, NOW, 1);
+    const durante = new Date(NOW.getTime() + LOGIN_BLOCK_MS - 1000);
+    const depois = new Date(NOW.getTime() + LOGIN_BLOCK_MS + 1000);
 
-    expect(secondsUntilUnblocked(estado, durante)).toBe(1);
-    expect(secondsUntilUnblocked(estado, depois)).toBe(0);
+    expect(secondsUntilUnblocked(state, durante)).toBe(1);
+    expect(secondsUntilUnblocked(state, depois)).toBe(0);
 
-    // E uma falha nova durante o bloqueio não estende o prazo original — senão
-    // um atacante manteria o usuário legítimo trancado para sempre.
-    estado = afterFailedAttempt(estado, durante, 1);
-    expect(secondsUntilUnblocked(estado, depois)).toBe(0);
+    // And a new failure during the block does not extend the original deadline —
+    // otherwise an attacker would keep the legitimate user locked out forever.
+    state = afterFailedAttempt(state, durante, 1);
+    expect(secondsUntilUnblocked(state, depois)).toBe(0);
   });
 
-  it("sem contador, nada bloqueia", () => {
-    expect(secondsUntilUnblocked(null, AGORA)).toBe(0);
-    expect(secondsUntilUnblocked({ failures: 9, firstFailureAt: AGORA, blockedUntil: null }, AGORA)).toBe(0);
+  it("with no counter, nothing blocks", () => {
+    expect(secondsUntilUnblocked(null, NOW)).toBe(0);
+    expect(secondsUntilUnblocked({ failures: 9, firstFailureAt: NOW, blockedUntil: null }, NOW)).toBe(0);
   });
 
-  it("a mensagem diz quanto esperar, em minutos inteiros", () => {
+  it("the message says how long to wait, in whole minutes", () => {
     expect(tooManyAttemptsMessage(60)).toContain("1 minuto");
     expect(tooManyAttemptsMessage(61)).toContain("2 minutos");
   });

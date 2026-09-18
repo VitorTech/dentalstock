@@ -1,32 +1,31 @@
 "use client";
 
 /**
- * Transporte HTTP das telas.
+ * HTTP transport for the screens.
  *
- * É o único lugar que conhece `fetch`, status de erro e redirecionamento de
- * sessão. Nenhuma tela monta requisição à mão: cada feature expõe as suas
- * operações em `modules/<feature>/ui/api.ts`, e elas chamam daqui.
+ * The only place that knows about `fetch`, error statuses and session
+ * redirects. No screen builds a request by hand: each feature exposes its
+ * operations in `modules/<feature>/ui/api.ts`, and those call in here.
  *
- * Motivo de existir: o middleware roda no edge e só consegue verificar se o
- * cookie de sessão EXISTE — não se ele ainda é válido. Com um cookie expirado,
- * a navegação passa, mas toda a API responde 401 e as telas quebravam ao tentar
- * usar o corpo de erro como lista (`e.map is not a function`).
+ * Why it exists: the middleware runs on the edge and can only check whether
+ * the session cookie EXISTS — not whether it is still valid. With an expired
+ * cookie navigation succeeds, but every API call answers 401, and screens used
+ * to break trying to use the error body as a list (`e.map is not a function`).
  *
- * Tratamento central:
- *   401 → sessão inválida  → volta para o login
- *   402 → sem assinatura   → vai para a tela de assinatura
- *   leitura  (`apiGet`)    → devolve o fallback, sem derrubar a tela
- *   escrita  (`apiSend`)   → lança `ApiError`, para a tela decidir o que dizer
+ * Central handling:
+ *   401 → invalid session → back to the login page
+ *   read  (`apiGet`)     → returns the fallback, without breaking the screen
+ *   write (`apiSend`)    → throws `ApiError`, so the screen decides what to say
  */
 
-/** Falha de escrita com a mensagem que o servidor devolveu. */
+/** Write failure carrying the message the server returned. */
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    /** Campo recusado, quando a validação aponta um. */
+    /** Rejected field, when validation points at one. */
     readonly field?: string,
-    /** Segundos até poder tentar de novo (respostas 429). */
+    /** Seconds until a retry is allowed (429 responses). */
     readonly retryAfterSeconds?: number
   ) {
     super(message);
@@ -36,17 +35,11 @@ export class ApiError extends Error {
 
 let redirecting = false;
 
-function hardRedirect(to: string) {
-  if (redirecting || typeof window === "undefined") return;
-  redirecting = true;
-  window.location.href = to;
-}
-
 /**
- * Sessão expirada: limpa o cookie antes de ir para o login.
+ * Expired session: clear the cookie before heading to the login page.
  *
- * O middleware só enxerga a PRESENÇA do cookie e, sem essa limpeza, devolveria
- * o usuário para o app — criando um ping-pong.
+ * The middleware only sees whether the cookie EXISTS; without this cleanup it
+ * would send the user straight back into the app — a ping-pong.
  */
 async function handleExpiredSession() {
   if (redirecting) return;
@@ -55,12 +48,12 @@ async function handleExpiredSession() {
   try {
     await fetch("/api/auth/logout", { method: "POST" });
   } catch {
-    /* segue para o login de qualquer forma */
+    /* head to the login page regardless */
   }
   window.location.href = `/login?next=${encodeURIComponent(next)}`;
 }
 
-/** GET que nunca lança: em caso de falha devolve `fallback`. */
+/** A GET that never throws: on failure it returns `fallback`. */
 export async function apiGet<T>(url: string, fallback: T): Promise<T> {
   try {
     const res = await fetch(url);
@@ -69,16 +62,13 @@ export async function apiGet<T>(url: string, fallback: T): Promise<T> {
       await handleExpiredSession();
       return fallback;
     }
-    if (res.status === 402) {
-      hardRedirect("/assinatura");
-      return fallback;
-    }
+
     if (!res.ok) return fallback;
 
     const data = await res.json();
 
-    // Se esperamos uma lista e não veio uma, preserva o fallback em vez de
-    // deixar a tela explodir num .map().
+    // If a list was expected and something else arrived, keep the fallback
+    // rather than letting the screen blow up on .map().
     if (Array.isArray(fallback) && !Array.isArray(data)) return fallback;
 
     return data as T;
@@ -88,19 +78,18 @@ export async function apiGet<T>(url: string, fallback: T): Promise<T> {
 }
 
 /**
- * `GET` entra aqui para os poucos casos em que uma leitura precisa mostrar a
- * mensagem do servidor (ex.: "não há cobrança em aberto") em vez de degradar
- * silenciosamente para um valor padrão.
+ * `GET` is allowed here for the few reads that must surface the server message
+ * instead of silently degrading to a default value.
  */
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
 /**
- * Requisição que precisa do resultado. Devolve o corpo convertido ou lança
+ * A request whose result matters. Returns the parsed body or throws
  * `ApiError`.
  *
- * Diferente do `apiGet` de propósito: uma leitura que falha pode degradar para
- * lista vazia, mas uma escrita que falha em silêncio faz o usuário acreditar
- * que salvou. Quem chama decide como mostrar o erro.
+ * Deliberately different from `apiGet`: a failed read can degrade to an empty
+ * list, but a write that fails silently makes the user believe it was saved.
+ * The caller decides how to surface the error.
  */
 export async function apiSend<T = void>(
   url: string,
@@ -123,10 +112,6 @@ export async function apiSend<T = void>(
     await handleExpiredSession();
     throw new ApiError("Sessão expirada.", 401);
   }
-  if (res.status === 402) {
-    hardRedirect("/assinatura");
-    throw new ApiError("Assinatura necessária.", 402);
-  }
 
   const payload = await readJson(res);
 
@@ -143,7 +128,7 @@ export async function apiSend<T = void>(
   return payload as T;
 }
 
-/** Corpo vazio (204) ou não-JSON não é erro: vira `undefined`. */
+/** An empty body (204) or non-JSON is not an error: it becomes `undefined`. */
 async function readJson(res: Response): Promise<Record<string, unknown> | undefined> {
   const text = await res.text();
   if (text.trim() === "") return undefined;

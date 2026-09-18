@@ -7,9 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Uma clínica. Todo dado do sistema pertence a um tenant e as consultas são
-/// sempre filtradas por tenantId — é o que garante isolamento entre clínicas.
-/// As preferências de tema vivem aqui para que cada uma tenha a sua.
+/// A clinic. Every piece of data belongs to a tenant and queries are always
+/// filtered by tenantId — that is what guarantees isolation between clinics.
+/// Theme preferences live here so each clinic has its own.
 model Tenant {
   id          String   @id @default(cuid())
   name        String
@@ -28,10 +28,9 @@ model Tenant {
   executions     ProcedureExecution[]
 }
 
-/// Papéis: OWNER é o administrador da PLATAFORMA (console de clínicas), não o
-/// dono da clínica — por isso não se concede pelo cadastro. Dentro da clínica,
-/// MEMBER tem acesso pleno e ASSISTANT é o perfil de auxiliar/ASB: executa e
-/// repõe, mas não altera o catálogo nem enxerga custo.
+/// Roles: OWNER owns the clinic account; MEMBER has full access; ASSISTANT is
+/// the dental assistant profile — performs procedures and restocks, but does
+/// not change the catalog nor see costs.
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -51,8 +50,8 @@ model User {
   @@index([tenantId])
 }
 
-/// Sessão persistida: o cookie guarda apenas um token opaco e aleatório, o que
-/// permite revogar acessos e não expõe dados no cliente.
+/// Persisted session: the cookie holds only an opaque random token, which
+/// allows revoking access and exposes no data on the client.
 model Session {
   id        String   @id @default(cuid())
   token     String   @unique
@@ -65,9 +64,9 @@ model Session {
   @@index([userId])
 }
 
-/// Contador de tentativas de login por chave ("user:<email>" ou "ip:<origem>").
-/// Mora no banco porque precisa valer para todas as instâncias da aplicação e
-/// sobreviver a reinício — em memória, um deploy zeraria o bloqueio.
+/// Login attempt counter per key ("user:<email>" or "ip:<origin>").
+/// It lives in the database because it must hold for every application
+/// instance and survive restarts — in memory, a deploy would clear the block.
 model LoginThrottle {
   key            String    @id
   failures       Int       @default(0)
@@ -75,7 +74,7 @@ model LoginThrottle {
   blockedUntil   DateTime?
   updatedAt      DateTime  @updatedAt
 
-  /// Usado só pela limpeza dos contadores vencidos.
+  /// Used only by the cleanup of expired counters.
   @@index([updatedAt])
 }
 
@@ -91,13 +90,13 @@ model Material {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// Custo de UMA unidade (a mesma de `unit`). Opcional: clínica que ainda não
-  /// levantou preço continua usando o sistema, e os relatórios de custo apenas
-  /// informam a cobertura parcial em vez de mostrar número errado.
+  /// Cost of ONE unit (the same as `unit`). Optional: a clinic that has not
+  /// gathered prices yet keeps using the system, and cost reports simply state
+  /// the partial coverage instead of showing a wrong number.
   unitCost  Float?
-  /// Validade do lote corrente. Material estéril e anestésico vencem, e a
-  /// vigilância sanitária cobra — a data mora no material porque a clínica
-  /// pequena repõe um lote de cada vez.
+  /// Expiry of the current batch. Sterile supplies and anesthetics expire, and
+  /// health inspections check it — the date lives on the material because a
+  /// small clinic restocks one batch at a time.
   expiresAt DateTime?
 
   supplierId String?
@@ -162,8 +161,8 @@ model ProcedureMaterial {
   @@unique([procedureId, materialId])
 }
 
-/// Instrumental é reutilizável e não sofre baixa ao finalizar procedimento, por
-/// isso não tem estoque mínimo: `stock` é o inventário da clínica, e só.
+/// An instrument is reusable and is not deducted when a procedure is
+/// finalized, so it has no minimum stock: `stock` is the clinic's inventory.
 model Instrument {
   id        String   @id @default(cuid())
   tenantId  String
@@ -194,9 +193,9 @@ model ProcedureInstrument {
   @@unique([procedureId, instrumentId])
 }
 
-/// Registro de um procedimento finalizado — a base do histórico da clínica.
-/// Os nomes são guardados como cópia (snapshot) de propósito: se um material
-/// for renomeado ou excluído depois, o histórico continua fiel ao que foi usado.
+/// Record of a finalized procedure — the basis of the clinic's history.
+/// Names are stored as a snapshot on purpose: if a material is renamed or
+/// deleted later, history stays faithful to what was actually used.
 model ProcedureExecution {
   id            String   @id @default(cuid())
   tenantId      String
@@ -205,25 +204,25 @@ model ProcedureExecution {
   category      String?
   createdAt     DateTime @default(now())
 
-  /// Quem finalizou. Opcional porque o histórico anterior a este campo não tem
-  /// autor — inventar um seria pior do que assumir a lacuna.
+  /// Who finalized it. Optional because history older than this field has no
+  /// author — inventing one would be worse than admitting the gap.
   userId   String?
   userName String?
 
-  /// Agrupa os procedimentos finalizados juntos numa mesma consulta. Quem faz
-  /// dois procedimentos no mesmo atendimento gera dois registros (o custo e o
-  /// consumo são de cada um), ligados por este identificador.
+  /// Groups procedures finalized together in one appointment. Two procedures
+  /// in the same appointment produce two records (cost and consumption belong
+  /// to each), linked by this identifier.
   sessionId String?
 
-  /// Estorno. A execução NÃO é apagada: some do saldo, permanece no histórico
-  /// marcada — auditoria não pode perder o que aconteceu, só registrar que foi
-  /// desfeito.
+  /// Reversal. The execution is NOT deleted: it leaves the balance and stays
+  /// in history, flagged — an audit trail cannot lose what happened, only
+  /// record that it was undone.
   reversedAt     DateTime?
   reversedByName String?
 
-  /// Custo total no momento da finalização (soma dos itens). Snapshot pelo mesmo
-  /// motivo dos nomes: mudar o preço de compra hoje não pode reescrever quanto
-  /// custou um procedimento do mês passado.
+  /// Total cost at finalization (sum of the items). A snapshot for the same
+  /// reason as the names: changing a purchase price today must not rewrite
+  /// what a procedure cost last month.
   totalCost Float?
 
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -245,11 +244,11 @@ model ProcedureExecutionItem {
   quantity    Float
   unit        String?
 
-  /// Material de origem, quando ainda existe. É o que permite ao estorno saber
-  /// para onde devolver a quantidade; nulo aqui só significa "material excluído
-  /// depois", e o nome em snapshot mantém o histórico legível.
+  /// Source material, while it still exists. It is what lets a reversal know
+  /// where to return the quantity; null here only means "material deleted
+  /// later", and the snapshotted name keeps history readable.
   materialId String?
-  /// Custo unitário praticado naquele dia.
+  /// Unit cost in effect on that day.
   unitCost   Float?
 
   execution ProcedureExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
@@ -257,29 +256,29 @@ model ProcedureExecutionItem {
   @@index([executionId])
 }
 
-/// Toda alteração de estoque passa por aqui — consumo, entrada, ajuste, estorno
-/// e balanço. É o livro-razão do estoque: o saldo em `Material.stock` é o
-/// resultado, este modelo é a explicação.
+/// Every stock change goes through here — consumption, entry, adjustment and
+/// reversal. It is the stock ledger: the balance in `Material.stock` is the
+/// result, this model is the explanation.
 model StockMovement {
   id          String   @id @default(cuid())
   tenantId    String
   materialId  String
   procedureId String?
-  quantity    Float // negativo = saída, positivo = entrada
+  quantity    Float // negative = out, positive = in
   type        String // CONSUMPTION | RESTOCK | ADJUSTMENT | REVERSAL
   createdAt   DateTime @default(now())
 
-  /// Autor e justificativa. Ajuste manual sem motivo é exatamente o registro que
-  /// não responde nada quando o estoque não bate.
+  /// Author and justification. A manual adjustment without a reason is exactly
+  /// the record that answers nothing when stock does not add up.
   userId   String?
   userName String?
   note     String?
 
-  /// Custo unitário da ENTRADA. É daqui que sai o custo do material quando a
-  /// clínica repõe por um preço novo.
+  /// Unit cost of the ENTRY. This is where the material's cost comes from when
+  /// the clinic restocks at a new price.
   unitCost Float?
 
-  /// Execução que originou o movimento (consumo e estorno).
+  /// Execution that originated the movement (consumption and reversal).
   executionId String?
 
   material  Material            @relation(fields: [materialId], references: [id])

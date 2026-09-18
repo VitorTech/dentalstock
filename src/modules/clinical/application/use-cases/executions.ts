@@ -1,9 +1,9 @@
 /**
- * Finalização e estorno de procedimentos.
+ * Procedure finalization and reversal.
  *
- * A finalização é o coração do produto, e aqui fica visível que ela não tem
- * nada de banco: o caso de uso busca dados pelas portas, pede a decisão à
- * política pura e manda persistir o resultado.
+ * Finalization is the heart of the product, and here it is visible that it has
+ * nothing to do with the database: the use case fetches data through ports,
+ * asks a pure policy for the decision and hands the result to be persisted.
  */
 import type { MaterialRepository, ProcedureRepository } from "@/modules/catalog/application";
 import { type ShortageDetail, planConsumption, planReversal } from "@/modules/clinical/domain";
@@ -15,7 +15,7 @@ export type FinalizeOutcome =
   | { ok: true; cost: number | null; procedures: number }
   | { ok: false; shortages: ShortageDetail[] };
 
-/** Teto de procedimentos numa mesma sessão — um atendimento real não passa disso. */
+/** Cap of procedures in one session — a real appointment never exceeds it. */
 const MAX_PROCEDURES_PER_SESSION = 20;
 
 interface RequestedProcedure {
@@ -24,19 +24,19 @@ interface RequestedProcedure {
 }
 
 /**
- * Finaliza um ou mais procedimentos: baixa os materiais e registra o histórico.
+ * Finalizes one or more procedures: deducts materials and records history.
  *
- * Regra do produto aplicada pela política: material é consumido, instrumental
- * não — este entra no histórico como checklist, sem alterar estoque.
+ * Product rule enforced by the policy: materials are consumed, instruments are
+ * not — the latter land in history as a checklist, without touching stock.
  *
- * Aceita vários procedimentos porque o atendimento real raramente tem um só. Os
- * registros ficam separados (o custo e o consumo são de cada procedimento) mas
- * compartilham um `sessionId`, e a baixa é uma transação única: se o segundo
- * procedimento esbarrar em falta, o primeiro não pode ter saído do estoque.
+ * It accepts several procedures because a real appointment rarely has just
+ * one. The records stay separate (cost and consumption belong to each
+ * procedure) but share a `sessionId`, and the deduction is a single
+ * transaction: if the second procedure hits a shortage, the first must not
+ * have left the stock.
  *
- * A conferência de estoque considera a demanda SOMADA da sessão — dois
- * procedimentos que usam o mesmo material precisam caber juntos, não cada um
- * por si.
+ * The stock check considers the SUMMED demand of the session — two procedures
+ * using the same material must fit together, not each on its own.
  */
 export class FinalizeProcedureUseCase {
   constructor(
@@ -58,8 +58,8 @@ export class FinalizeProcedureUseCase {
     );
     const available = await this.materials.findManyByIds(tenantId, allMaterialIds);
 
-    // Saldo corrente da sessão: cada procedimento planejado desconta do que
-    // sobrou para o próximo.
+    // Running balance for the session: each planned procedure subtracts from
+    // what is left for the next one.
     const remaining = new Map(available.map((m) => [m.id, m.stock]));
 
     const commits: ExecutionCommitInput[] = [];
@@ -90,8 +90,8 @@ export class FinalizeProcedureUseCase {
           quantity: d.quantity,
         })),
         historyItems: planned.plan.historyItems,
-        // Total parcial não é reportado como se fosse completo: sem nenhum item
-        // precificado o custo fica nulo, e a tela diz que falta cadastrar preço.
+        // A partial total is never reported as complete: with no priced item
+        // the cost stays null, and the screen says a price is missing.
         totalCost:
           planned.plan.cost.counted > planned.plan.cost.missing ? planned.plan.cost.total : null,
       });
@@ -101,8 +101,8 @@ export class FinalizeProcedureUseCase {
 
     await this.executions.commit({
       tenantId,
-      // Só marca sessão quando de fato houve mais de um procedimento: um
-      // agrupador de um item só não informa nada.
+      // A session is only marked when there really was more than one procedure:
+      // a grouper around a single item tells nobody anything.
       sessionId: commits.length > 1 ? this.secrets.token(12) : null,
       userId: actor.userId,
       userName: actor.name,
@@ -118,12 +118,12 @@ export class FinalizeProcedureUseCase {
   }
 
   /**
-   * Normaliza o corpo da requisição.
+   * Normalizes the request body.
    *
-   * Aceita tanto `{ procedureId, materials }` (um procedimento) quanto
-   * `{ procedures: [...] }` (sessão). O formato antigo continua valendo porque
-   * uma tela em cache no navegador do cliente não pode quebrar a operação mais
-   * usada do sistema.
+   * Accepts both `{ procedureId, materials }` (a single procedure) and
+   * `{ procedures: [...] }` (a session). The older shape still works because a
+   * screen cached in the customer's browser must not break the most used
+   * operation in the system.
    */
   private readRequest(input: {
     procedureId?: unknown;
@@ -158,7 +158,7 @@ export class FinalizeProcedureUseCase {
       if (!Array.isArray(item.materials) || item.materials.length === 0) {
         throw new ValidationError("Informe ao menos um material.", "materials");
       }
-      // Teto de itens: barra payload absurdo numa rota que escreve no banco.
+      // Item cap: blocks an absurd payload on a route that writes to the database.
       if (item.materials.length > 200) {
         throw new ValidationError("Lista de materiais muito longa.", "materials");
       }
@@ -176,11 +176,11 @@ export class FinalizeProcedureUseCase {
 }
 
 /**
- * Estorna uma finalização.
+ * Reverses a finalization.
  *
- * O registro NÃO é apagado: some do saldo e do painel, mas permanece no
- * histórico marcado como estornado. Auditoria não pode perder o que aconteceu —
- * só registrar que foi desfeito, por quem e quando.
+ * The record is NOT deleted: it disappears from the balance and the dashboard,
+ * but remains in history marked as reversed. An audit trail cannot lose what
+ * happened — only record that it was undone, by whom and when.
  */
 export class ReverseExecutionUseCase {
   constructor(private readonly executions: ProcedureExecutionRepository) {}
@@ -189,7 +189,7 @@ export class ReverseExecutionUseCase {
     const execution = await this.executions.findById(actor.tenantId, executionId);
     if (!execution) throw new NotFoundError("Registro não encontrado.");
 
-    // A política decide o que devolver (e recusa estorno duplicado).
+    // The policy decides what to return (and refuses a double reversal).
     const { returns } = planReversal(execution);
 
     await this.executions.reverse({

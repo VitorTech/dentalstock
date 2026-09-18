@@ -1,9 +1,8 @@
 /**
- * Atendimento: procedimentos executados e seus itens.
+ * Clinical work: executed procedures and their items.
  *
- * Nomes e custos dos itens são guardados como cópia (snapshot) de propósito:
- * se um material for renomeado ou reprecificado depois, o histórico continua
- * fiel ao que foi usado.
+ * Item names and costs are stored as a snapshot on purpose: if a material is
+ * renamed or repriced later, history stays faithful to what was used.
  */
 import type { Uuid } from "@/shared/domain";
 
@@ -15,9 +14,9 @@ export interface ExecutionItem {
   name: string;
   quantity: number;
   unit: string | null;
-  /** Material de origem, quando ainda existe — é o alvo da devolução no estorno. */
+  /** Source material, while it still exists — the target of a reversal. */
   materialId: Uuid | null;
-  /** Custo unitário praticado na data da execução (snapshot). */
+  /** Unit cost in effect on the execution date (snapshot). */
   unitCost: number | null;
 }
 
@@ -28,13 +27,13 @@ export interface ProcedureExecution {
   category: string | null;
   createdAt: Date;
   items: ExecutionItem[];
-  /** Quem finalizou. Nulo no histórico anterior ao registro de autoria. */
+  /** Who finalized it. Null for history older than authorship tracking. */
   userName: string | null;
-  /** Agrupador dos procedimentos finalizados no mesmo atendimento. */
+  /** Groups the procedures finalized in the same appointment. */
   sessionId: Uuid | null;
-  /** Quando foi estornado; nulo enquanto vale. */
+  /** When it was reversed; null while it still stands. */
   reversedAt: Date | null;
   reversedByName: string | null;
-  /** Custo total no momento da finalização. */
+  /** Total cost at the moment of finalization. */
   totalCost: number | null;
 }

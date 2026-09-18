@@ -1,9 +1,9 @@
 /**
- * Nome do cookie de sessão.
+ * Name of the session cookie.
  *
- * Arquivo isolado e sem dependências de propósito: é importado pelo middleware,
- * que roda no runtime edge e não pode carregar Prisma nem `next/headers`.
- * Antes o mesmo nome existia em dois lugares (`SESSION_COOKIE` e
- * `ACCESS_TOKEN_COOKIE`); mudar um sem o outro quebraria o login em silêncio.
+ * A dependency-free file on purpose: it is imported by the middleware, which
+ * runs on the edge runtime and cannot load Prisma or `next/headers`. The name
+ * used to exist in two places (`SESSION_COOKIE` and `ACCESS_TOKEN_COOKIE`);
+ * changing one without the other broke login silently.
  */
 export const SESSION_COOKIE = "session";

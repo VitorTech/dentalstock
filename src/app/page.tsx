@@ -3,17 +3,17 @@ import { ArrowRight, BarChart3, Boxes, ScrollText, Stethoscope } from "lucide-re
 import ToothIcon from "@/shared/ui/ToothIcon";
 
 /**
- * Página pública — porta de entrada do sistema.
+ * Public page — the system's front door.
  *
- * Estática de propósito: não lê sessão nem banco, então o Next a serve como
- * HTML pronto. Quem já tem cookie é levado ao app pelo middleware antes de
- * chegar aqui.
+ * Static on purpose: it reads neither session nor database, so Next serves it
+ * as ready-made HTML. Whoever already has a cookie is taken to the app by the
+ * middleware before reaching this page.
  */
 export const metadata = {
   title: "DentalStock — Controle de estoque por procedimento",
 };
 
-const RECURSOS = [
+const FEATURES = [
   {
     icon: Stethoscope,
     titulo: "Baixa por procedimento",
@@ -65,7 +65,7 @@ export default function LandingPage() {
         </Link>
 
         <div className="mt-16 grid gap-4 text-left sm:grid-cols-2">
-          {RECURSOS.map(({ icon: Icon, titulo, texto }) => (
+          {FEATURES.map(({ icon: Icon, titulo, texto }) => (
             <div
               key={titulo}
               className="rounded-xl2 border border-hairline bg-surface p-5 shadow-card"

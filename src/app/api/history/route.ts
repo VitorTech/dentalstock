@@ -1,4 +1,4 @@
-/** Adaptador de entrada: /api/history */
+/** Inbound adapter: /api/history */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";
@@ -12,8 +12,8 @@ const PAGE_SIZE = 30;
 export const GET = route("authenticated", async ({ req, actor }) => {
   const params = req.nextUrl.searchParams;
 
-  // Limites aplicados na leitura: paginação não pode ser usada para varrer o
-  // banco de uma vez nem para pedir página negativa.
+  // Limits applied on read: pagination cannot be used to sweep the database in
+  // one go, nor to ask for a negative page.
   const page = readInt(params.get("page"), { min: 1, max: 10_000, fallback: 1 });
   const sinceDays = readInt(params.get("days"), { min: 0, max: 3650, fallback: 0 });
 

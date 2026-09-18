@@ -1,12 +1,11 @@
 /**
- * Cliente PostgreSQL do processo.
+ * The process-wide PostgreSQL client.
  *
- * Instância única reaproveitada em desenvolvimento: sem isso, cada recompilação
- * do Next abriria um novo pool e o banco esgotaria as conexões.
+ * A single instance reused in development: without it every Next recompile
+ * would open a new pool and the database would run out of connections.
  *
- * Só os adaptadores de persistência e a raiz de composição importam este
- * módulo. Nenhum caso de uso o conhece — quem precisa de dados fala com as
- * portas de repositório.
+ * Only persistence adapters and the composition root import this module. No
+ * use case knows about it — whoever needs data talks to a repository port.
  */
 import { PrismaClient } from "@prisma/client";
 

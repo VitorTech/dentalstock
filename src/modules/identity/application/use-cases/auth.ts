@@ -1,8 +1,8 @@
 /**
- * Casos de uso de autenticação.
+ * Authentication use cases.
  *
- * Nenhuma linha de SQL, nenhum `req`/`res`, nenhum import de biblioteca: só
- * domínio e portas. É o que permite testar login sem subir banco nem servidor.
+ * No SQL, no `req`/`res`, no library imports: domain and ports only. That is
+ * what makes login testable without a database or a server.
  */
 import {
   LOGIN_MAX_FAILURES_PER_ACCOUNT,
@@ -39,29 +39,29 @@ export class LoginUseCase {
   async execute(input: {
     email: unknown;
     password: unknown;
-    /** Origem da tentativa; `null` quando o proxy não informou. */
+    /** Origin of the attempt; `null` when the proxy did not report one. */
     ipAddress?: string | null;
   }): Promise<LoginResult> {
-    // Validação antes de tocar o banco (OWASP: rejeitar entrada malformada cedo).
-    // Note `forAuthentication`: no login não se aplica política de força, só
-    // presença — senão a resposta distinguiria "senha curta" de "senha errada".
+    // Validate before touching the database (OWASP: reject malformed input
+    // early). Note `forAuthentication`: login applies no strength policy, only
+    // presence — otherwise the answer would separate "short" from "wrong".
     const email = Email.create(input.email);
     const password = PlainPassword.forAuthentication(input.password);
 
-    // Limite de tentativas ANTES de comparar a senha: um pedido bloqueado não
-    // pode custar um hash, senão o próprio mecanismo vira o ataque (scrypt é
-    // caro de propósito).
+    // Rate limit BEFORE comparing the password: a blocked request must not
+    // cost a hash, or the defense becomes the attack (scrypt is expensive on
+    // purpose).
     const limits = this.limitsFor(email.value, input.ipAddress ?? null);
     const counters = await this.loadCounters(limits);
     this.ensureNotBlocked(counters);
 
     const user = await this.users.findByEmail(email.value);
 
-    // Mensagem idêntica para e-mail inexistente e senha errada: não revela
-    // quais e-mails existem (OWASP A07 — enumeração de usuários).
+    // Identical message for a missing e-mail and a wrong password: it never
+    // reveals which e-mails exist (OWASP A07 — user enumeration).
     const invalid = new UnauthorizedError("E-mail ou senha inválidos.");
     if (!user) {
-      // Gasta tempo comparável ao caminho válido para não vazar por timing.
+      // Spends time comparable to the valid path so nothing leaks by timing.
       await this.hasher.verify(password.value, "dummy:0".padEnd(96, "0"));
       await this.registerFailure(counters);
       throw invalid;
@@ -73,12 +73,12 @@ export class LoginUseCase {
       throw invalid;
     }
 
-    // Acertou: os contadores desta tentativa somem. É o que impede o bloqueio
-    // de virar punição acumulada para quem só digitou errado algumas vezes.
+    // Success: the counters for this attempt disappear. That is what keeps the
+    // block from becoming cumulative punishment for a few typos.
     await Promise.all(counters.map((counter) => this.throttle.clear(counter.key)));
 
-    // A sessão registrada é a âncora de revogação: o JWT é aceito somente
-    // enquanto o jti correspondente estiver ativo.
+    // The stored session is the revocation anchor: the JWT is accepted only
+    // while its matching jti is active.
     const sessionId = this.secrets.token(32);
     const expiresAt = new Date(
       this.clock.now().getTime() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
@@ -108,10 +108,10 @@ export class LoginUseCase {
   }
 
   /**
-   * As chaves contadas nesta tentativa.
+   * The keys counted for this attempt.
    *
-   * Sem IP conhecido resta o limite por conta — que é o que protege a senha de
-   * um usuário específico, o alvo mais provável.
+   * With no known IP, the per-account limit remains — and that is the one
+   * protecting a specific user's password, the likelier target.
    */
   private limitsFor(email: string, ipAddress: string | null) {
     const limits = [{ key: `user:${email}`, maxFailures: LOGIN_MAX_FAILURES_PER_ACCOUNT }];
@@ -130,17 +130,17 @@ export class LoginUseCase {
   private ensureNotBlocked(counters: { state: LoginAttemptState | null }[]): void {
     const now = this.clock.now();
     const wait = Math.max(...counters.map((c) => secondsUntilUnblocked(c.state, now)), 0);
-    // Mensagem única para conta e IP: saber QUAL limite bateu diria ao atacante
-    // se aquele e-mail existe.
+    // One message for account and IP alike: knowing WHICH limit was hit would
+    // tell the attacker whether that e-mail exists.
     if (wait > 0) throw new TooManyRequestsError(tooManyAttemptsMessage(wait), wait);
   }
 
   /**
-   * Conta a falha nas duas chaves.
+   * Counts the failure against both keys.
    *
-   * Uma falha registrada a menos enfraquece o limite, mas derrubar o login
-   * porque o contador falhou seria pior: o registro é feito em paralelo e um
-   * erro aqui não impede a resposta de credencial inválida.
+   * One unrecorded failure weakens the limit, but failing the login because a
+   * counter failed would be worse: the writes run in parallel, and an error
+   * here does not block the invalid-credentials answer.
    */
   private async registerFailure(
     counters: { key: string; maxFailures: number; state: LoginAttemptState | null }[]
@@ -155,11 +155,11 @@ export class LoginUseCase {
 }
 
 /**
- * Resolve a identidade a partir do token.
+ * Resolves the identity carried by a token.
  *
- * Dupla verificação de propósito: assinatura do JWT (rápida, sem banco) e
- * existência da sessão (permite revogar acesso na hora — logout, troca de senha
- * ou exclusão do usuário). JWT puro não conseguiria revogar.
+ * Double check on purpose: the JWT signature (fast, no database) and the
+ * session record (which allows revoking access immediately — logout, password
+ * change or user deletion). A bare JWT could not revoke anything.
  */
 export class AuthenticateUseCase {
   constructor(
@@ -181,8 +181,8 @@ export class AuthenticateUseCase {
       tenantId: claims.tenantId,
       role: claims.role,
       email: claims.email,
-      // Token emitido antes de o nome existir na claim: a autoria cai para o
-      // e-mail, que identifica a pessoa igualmente bem no extrato.
+      // Token issued before the name claim existed: authorship falls back to
+      // the e-mail, which identifies the person just as well in the ledger.
       name: claims.name ?? claims.email,
     };
   }
@@ -197,7 +197,7 @@ export class LogoutUseCase {
   async execute(token: string | null): Promise<void> {
     if (!token) return;
     const claims = await this.tokens.verify(token);
-    // Revoga mesmo que o token já esteja expirado — idempotente por natureza.
+    // Revokes even if the token already expired — idempotent by nature.
     if (claims?.sessionId) await this.sessions.revoke(claims.sessionId);
   }
 }

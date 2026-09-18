@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-/** Filtro liga/desliga em forma de pílula, com tom de alerta quando ativo. */
+/** Pill-shaped on/off filter, tinted with an alert tone when active. */
 export default function FilterChip({
   active,
   tone,

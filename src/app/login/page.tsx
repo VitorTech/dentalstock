@@ -25,12 +25,12 @@ export default function LoginPage() {
 
       const next = new URLSearchParams(window.location.search).get("next");
       const dest = next && next.startsWith("/") && next !== "/" ? next : "/procedimentos";
-      // refresh para o layout reler a sessão e aplicar o tema da clínica
+      // refresh so the layout re-reads the session and applies the clinic theme
       router.replace(dest);
       router.refresh();
     } catch (e) {
-      // Inclui o 429 do limite de tentativas: a mensagem já vem com o tempo
-      // de espera calculado pelo servidor.
+      // Includes the 429 from the attempt limit: the message already carries
+      // the waiting time computed by the server.
       setError(e instanceof ApiError ? e.message : "Falha de conexão. Tente novamente.");
     } finally {
       setSubmitting(false);

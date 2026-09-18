@@ -1,9 +1,8 @@
 /**
- * Adaptador de entrada: /api/team — acessos da própria clínica.
+ * Inbound adapter: /api/team — the clinic's own accesses.
  *
- * Distinto de /api/admin/users, que é o console da PLATAFORMA. Aqui o tenant
- * nunca vem do corpo da requisição: sai da identidade autenticada, dentro do
- * caso de uso.
+ * The tenant never comes from the request body: it is taken from the
+ * authenticated identity, inside the use case.
  */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
@@ -14,8 +13,8 @@ import { readJsonBody } from "@/shared/infrastructure/http/request";
 export const dynamic = "force-dynamic";
 
 export const GET = route("authenticated", async ({ actor }) => {
-  // A permissão de gerenciar equipe é conferida no caso de uso, que é quem
-  // conhece a regra — o guarda aqui garante só sessão e assinatura.
+  // Permission to manage the team is checked in the use case, which owns the
+  // rule — the guard here only ensures there is a valid session.
   const users = await container.identity.listTeam.execute(actor);
   return NextResponse.json(users.map(toUserResponse));
 });

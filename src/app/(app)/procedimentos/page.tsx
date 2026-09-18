@@ -16,15 +16,14 @@ import { useMe } from "@/modules/identity/ui/use-me";
 import { isLowStock, type Instrument, type Material, type Procedure } from "@/modules/catalog/domain";
 
 /**
- * Intervalo da revalidação em segundo plano. Sessenta segundos é folgado para
- * um estoque de clínica e reduz em quatro vezes o tráfego do ciclo anterior.
+ * Background revalidation interval. Sixty seconds is generous for a clinic's
+ * stock and cuts the traffic of the previous cycle by four.
  */
 const REFRESH_INTERVAL_MS = 60_000;
 
 export default function Home() {
-  // O provedor precisa envolver a árvore inteira desta tela: tanto os cards
-  // (que marcam procedimentos) quanto a barra (que finaliza) leem o mesmo
-  // contexto.
+  // The provider must wrap this whole screen: both the cards (which mark
+  // procedures) and the bar (which finalizes) read the same context.
   return (
     <ProcedureSessionProvider>
       <ProceduresScreen />
@@ -67,14 +66,14 @@ function ProceduresScreen() {
   }, [query]);
 
   /**
-   * Mantém saldo de material e instrumental atualizados em segundo plano, para
-   * os seletores de "adicionar" mostrarem o estoque real.
+   * Keeps material and instrument balances fresh in the background, so the
+   * "add" pickers show real stock.
    *
-   * Duas decisões que vieram de medição: a recarga PARA quando a aba não está
-   * visível — uma recepção deixa esta tela aberta o dia inteiro, e o relógio
-   * antigo gerava 480 pares de requisições por hora com ninguém olhando — e
-   * volta a rodar assim que a aba é focada, que é justamente quando o dado
-   * desatualizado passaria a importar.
+   * Two decisions that came from measurement: the refresh STOPS while the tab
+   * is hidden — a front desk leaves this screen open all day, and the old
+   * timer produced 480 pairs of requests per hour with nobody looking — and it
+   * runs again as soon as the tab is focused, which is exactly when stale data
+   * would start to matter.
    */
   useEffect(() => {
     const atualizar = async () => {
@@ -85,7 +84,7 @@ function ProceduresScreen() {
 
     const interval = setInterval(atualizar, REFRESH_INTERVAL_MS);
 
-    // Voltar para a aba revalida na hora, sem esperar o próximo ciclo.
+    // Coming back to the tab revalidates at once, without waiting for the cycle.
     const aoVoltar = () => {
       if (!document.hidden) atualizar();
     };
@@ -110,8 +109,8 @@ function ProceduresScreen() {
   };
 
   const handleProcedureCreated = (procedure: Procedure) => {
-    // Limpa a busca para o novo procedimento aparecer, e já abre sua
-    // especialidade + o próprio card para o usuário adicionar materiais.
+    // Clears the search so the new procedure shows up, and opens its specialty
+    // plus the card itself so the user can add materials.
     setQuery("");
     setProcedures((prev) =>
       [...prev, procedure].sort((a, b) => a.name.localeCompare(b.name))
@@ -128,7 +127,7 @@ function ProceduresScreen() {
 
   const handleProcedureDuplicated = (procedure: Procedure) => {
     setProcedures((prev) => [...prev, procedure].sort((a, b) => a.name.localeCompare(b.name)));
-    // Abre a cópia direto: renomear e ajustar os itens é o próximo passo óbvio.
+    // Opens the copy right away: renaming and adjusting items is the next step.
     setExpandedCategory(procedure.category?.trim() || "Outros");
     setExpandedId(procedure.id);
   };

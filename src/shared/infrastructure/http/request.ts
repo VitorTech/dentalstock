@@ -1,16 +1,16 @@
 /**
- * Leitura segura da requisição.
+ * Safe request reading.
  *
- * Defesas aplicadas (OWASP A03/A04):
- *  - Content-Type conferido: evita processar corpo de origem inesperada;
- *  - limite de tamanho do corpo: barra payload gigante que consumiria memória;
- *  - JSON inválido vira ValidationError, não erro 500;
- *  - identificadores de rota validados por formato antes de virar consulta.
+ * Defenses applied (OWASP A03/A04):
+ *  - Content-Type is checked, so bodies from unexpected origins are not parsed;
+ *  - body size is capped, blocking huge payloads that would eat memory;
+ *  - invalid JSON becomes a ValidationError, not a 500;
+ *  - route identifiers are format-checked before they reach a query.
  */
 import type { NextRequest } from "next/server";
 import { ValidationError } from "@/shared/domain";
 
-const MAX_BODY_BYTES = 64 * 1024; // 64 KB: mais que suficiente para nossos formulários
+const MAX_BODY_BYTES = 64 * 1024; // 64 KB: plenty for our forms
 
 export async function readJsonBody(req: NextRequest): Promise<Record<string, unknown>> {
   const contentType = req.headers.get("content-type") ?? "";
@@ -36,8 +36,8 @@ export async function readJsonBody(req: NextRequest): Promise<Record<string, unk
     throw new ValidationError("JSON inválido.");
   }
 
-  // Array ou primitivo no lugar de objeto costuma indicar tentativa de burlar
-  // a validação de campos — recusamos explicitamente.
+  // An array or primitive where an object is expected usually means someone
+  // is probing the field validation — reject it explicitly.
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new ValidationError("Corpo deve ser um objeto JSON.");
   }
@@ -45,11 +45,10 @@ export async function readJsonBody(req: NextRequest): Promise<Record<string, unk
 }
 
 /**
- * Valida identificador vindo da URL.
+ * Validates an identifier coming from the URL.
  *
- * Os ids são cuid (alfanuméricos). Restringir por allowlist impede que caminhos
- * inesperados cheguem à camada de dados, mesmo com o Prisma já protegendo
- * contra injeção.
+ * Ids are cuids (alphanumeric). An allowlist keeps unexpected paths away from
+ * the data layer even though Prisma already protects against injection.
  */
 export function readId(value: unknown, field = "id"): string {
   if (typeof value !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(value)) {
@@ -58,7 +57,7 @@ export function readId(value: unknown, field = "id"): string {
   return value;
 }
 
-/** Inteiro de query string com limites — evita paginação abusiva. */
+/** Bounded integer from the query string — prevents abusive pagination. */
 export function readInt(
   value: string | null,
   opts: { min: number; max: number; fallback: number }
@@ -69,27 +68,27 @@ export function readInt(
   return Math.min(opts.max, Math.max(opts.min, Math.trunc(parsed)));
 }
 
-/** Texto de busca saneado: aparado e truncado. */
+/** Sanitized search text: trimmed and truncated. */
 export function readSearch(value: string | null, max = 120): string {
   if (!value) return "";
   return value.trim().slice(0, max);
 }
 
 /**
- * Endereço do cliente, para limitar tentativas por origem.
+ * Client address, used to rate-limit attempts per origin.
  *
- * Em produção quem termina o TLS é o Caddy, que preenche `X-Forwarded-For`; o
- * primeiro elemento da lista é o cliente. O cabeçalho é falsificável por quem
- * fala DIRETAMENTE com a aplicação, então isto só vale porque o container só
- * recebe tráfego do proxy — nunca exponha a porta 3000 para fora.
+ * In production a reverse proxy terminates TLS and fills `X-Forwarded-For`; the
+ * first element of the list is the client. The header is forgeable by whoever
+ * talks DIRECTLY to the application, so this only holds because the container
+ * receives traffic exclusively from the proxy — never expose port 3000.
  *
- * Devolve `null` quando não há cabeçalho: nesse caso o limite por conta segue
- * valendo, e é ele que protege a senha de um usuário específico.
+ * Returns `null` when the header is missing: the per-account limit still
+ * applies, and that is the one protecting a specific user's password.
  */
 export function readClientIp(req: NextRequest): string | null {
   const forwarded = req.headers.get("x-forwarded-for");
   const candidate = forwarded?.split(",")[0]?.trim() || req.headers.get("x-real-ip")?.trim();
   if (!candidate) return null;
-  // Teto de tamanho: o valor vira chave de linha no banco.
+  // Length cap: the value becomes a row key in the database.
   return candidate.slice(0, 45);
 }

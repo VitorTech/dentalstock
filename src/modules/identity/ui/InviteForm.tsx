@@ -8,7 +8,7 @@ import { ROLE_HINT, type TeamUser } from "./team";
 import { ApiError } from "@/shared/ui/api-client";
 import { inviteMember } from "./api";
 
-/** Formulário de convite de um novo membro da equipe. */
+/** Form used to invite a new team member. */
 export default function InviteForm({
   onCancel,
   onCreated,

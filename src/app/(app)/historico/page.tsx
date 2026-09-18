@@ -48,7 +48,7 @@ export default function HistoricoPage() {
     []
   );
 
-  // Busca e filtro reiniciam a paginação.
+  // Search and filters restart pagination.
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true);
@@ -82,15 +82,15 @@ export default function HistoricoPage() {
     setReversing(execution.id);
     try {
       await reverseExecution(execution.id);
-      // Marca localmente em vez de recarregar a lista: a posição de rolagem e as
-      // páginas já carregadas são preservadas.
+      // Mark it locally instead of reloading the list: scroll position and the
+      // already loaded pages are preserved.
       setExecutions((prev) =>
         prev.map((e) =>
           e.id === execution.id ? { ...e, reversedAt: new Date().toISOString() } : e
         )
       );
     } catch {
-      // Falha no estorno mantém a linha como está — a lista não mente.
+      // A failed reversal leaves the row as it was — the list does not lie.
     } finally {
       setReversing(null);
     }
@@ -148,8 +148,8 @@ export default function HistoricoPage() {
             {total > 0 && (
               <a
                 href={exportUrl}
-                // `download` faz o navegador salvar o arquivo em vez de navegar
-                // até a rota, que responderia com texto puro.
+                // `download` makes the browser save the file instead of
+                // navigating to the route, which would answer with plain text.
                 download
                 className="flex items-center gap-1.5 rounded-full border border-hairline bg-surface px-3 py-1.5 text-[12.5px] font-medium text-subink transition-colors hover:bg-canvas hover:text-ink"
               >

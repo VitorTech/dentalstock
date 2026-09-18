@@ -1,11 +1,12 @@
 /**
- * Saída de emergência para sessão inválida.
+ * Emergency exit for an invalid session.
  *
- * O middleware roda no edge e só enxerga a PRESENÇA do cookie — não sabe se a
- * sessão ainda vale. Sem isto, um cookie órfão criava laço: /login mandava para
- * o app (cookie existe) e o app mandava de volta para /login (sessão inválida).
- * Aqui o cookie é apagado antes de devolver o usuário ao login, quebrando o
- * ciclo. Rotas /api não passam pelo middleware, então não há rebote.
+ * The middleware runs on the edge and only sees that the cookie is PRESENT —
+ * it cannot know whether the session still stands. Without this, an orphan
+ * cookie created a loop: /login sent the user into the app (the cookie
+ * exists), and the app sent them back to /login (invalid session). Here the
+ * cookie is cleared before returning the user to login, breaking the cycle.
+ * /api routes skip the middleware, so there is no bounce.
  */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
@@ -20,8 +21,8 @@ export const GET = route("public", async ({ req }) => {
 
   const next = req.nextUrl.searchParams.get("next");
   const url = new URL("/login", req.url);
-  // Só aceita caminho interno: `next` vindo da URL é entrada não confiável e
-  // poderia redirecionar para site externo (OWASP — open redirect).
+  // Internal paths only: `next` comes from the URL, is untrusted input and
+  // could redirect to an external site (OWASP — open redirect).
   if (next && /^\/[A-Za-z0-9/_-]{0,100}$/.test(next) && next !== "/") {
     url.searchParams.set("next", next);
   }

@@ -1,4 +1,4 @@
-/** Casos de uso das preferências da clínica (nome e tema). */
+/** Use cases for the clinic's preferences (name and theme). */
 import { HexColor, type Tenant } from "@/modules/account/domain";
 import { NonEmptyText, NotFoundError, type Uuid, ValidationError } from "@/shared/domain";
 import type { TenantRepository } from "../ports";
@@ -13,7 +13,7 @@ export class UpdateTenantThemeUseCase {
     const data: { themeMode?: string; accentColor?: string; name?: string } = {};
 
     if (input.themeMode !== undefined) {
-      // Allowlist estrita: qualquer valor fora da lista é recusado.
+      // Strict allowlist: any value outside the list is rejected.
       const allowed = ["light", "dark", "system"];
       if (typeof input.themeMode !== "string" || !allowed.includes(input.themeMode)) {
         throw new ValidationError("Modo de tema inválido.", "themeMode");
@@ -32,7 +32,7 @@ export class UpdateTenantThemeUseCase {
   }
 }
 
-/** Preferências da clínica exibidas na tela de configurações. */
+/** Clinic preferences shown on the settings screen. */
 export class GetTenantSettingsUseCase {
   constructor(private readonly tenants: TenantRepository) {}
 

@@ -13,8 +13,8 @@ export const ACCENT_PRESETS: { name: string; value: string }[] = [
 
 export const DEFAULT_ACCENT = ACCENT_PRESETS[0].value;
 
-/** Aplica o tema no <html> imediatamente (feedback instantâneo na tela de
- * Configurações). A persistência é no banco, por tenant — ver /api/tenant. */
+/** Applies the theme to <html> immediately (instant feedback on the Settings
+ * screen). Persistence happens in the database, per tenant — see /api/tenant. */
 export function applyTheme(mode: ThemeMode, accent: string) {
   const root = document.documentElement;
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;

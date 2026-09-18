@@ -1,9 +1,9 @@
 /**
- * Portas da conta.
+ * Account ports.
  *
- * Convenção de segurança: todo método que acessa dados de clínica recebe o
- * identificador explicitamente. O isolamento entre clientes é imposto na
- * assinatura da porta, não na lembrança de quem escreve a consulta.
+ * Security convention: every method that reads clinic data takes the clinic
+ * identifier explicitly. Isolation between customers is enforced by the port
+ * signature, not by the memory of whoever writes the query.
  */
 import type { Tenant } from "@/modules/account/domain";
 import type { Uuid } from "@/shared/domain";

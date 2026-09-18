@@ -13,14 +13,14 @@ export type FinalizeState =
   | { status: "insufficient"; items: ShortageDetail[] }
   | { status: "error"; message: string };
 
-/** Tempo em que o aviso de sucesso fica na tela antes de voltar ao botão. */
+/** How long the success notice stays on screen before the button returns. */
 const SUCCESS_VISIBLE_MS = 2600;
 
 /**
- * Máquina de estados da finalização de um procedimento avulso.
+ * State machine for finalizing a single procedure.
  *
- * O 409 é um resultado esperado, não um erro: significa que a transação foi
- * recusada inteira por falta de estoque, e a tela lista exatamente o que faltou.
+ * The 409 is an expected result, not an error: it means the whole transaction
+ * was refused for lack of stock, and the screen lists exactly what was missing.
  */
 export function useFinalizeProcedure({
   procedureId,
@@ -29,7 +29,7 @@ export function useFinalizeProcedure({
 }: {
   procedureId: string;
   materials: ProcedureMaterial[];
-  /** Recebe os saldos atualizados de cada material descontado. */
+  /** Receives the updated balances of every deducted material. */
   onStockUpdated: (materials: Material[]) => void;
 }) {
   const [state, setState] = useState<FinalizeState>({ status: "idle" });

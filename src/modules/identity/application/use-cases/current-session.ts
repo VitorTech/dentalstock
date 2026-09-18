@@ -1,4 +1,4 @@
-/** Resolução da sessão atual para rotas e Server Components. */
+/** Current-session resolution for routes and Server Components. */
 import type { TenantRepository } from "@/modules/account/application";
 import type { Tenant } from "@/modules/account/domain";
 import type { User } from "@/modules/identity/domain";
@@ -12,11 +12,11 @@ export interface CurrentSession {
 }
 
 /**
- * Sessão completa do ator: usuário e clínica.
+ * The actor's full session: user and clinic.
  *
- * Existe para que rotas e Server Components não consultem repositórios
- * diretamente. Devolve null quando o usuário ou a clínica não existem mais —
- * uma sessão órfã é tratada como ausência de sessão, nunca como erro.
+ * It exists so routes and Server Components never query repositories directly.
+ * Returns null when the user or the clinic no longer exists — an orphan
+ * session is treated as no session, never as an error.
  */
 export class GetCurrentSessionUseCase {
   constructor(

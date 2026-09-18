@@ -6,8 +6,8 @@ import { fmtMoney } from "@/shared/ui/format";
 import type { FinalizeState } from "./use-finalize-procedure";
 
 /**
- * Rodapé de finalização do card: avisos, confirmação e o atalho para somar o
- * procedimento a uma consulta com vários procedimentos.
+ * The card's finalize footer: warnings, confirmation and the shortcut to add
+ * the procedure to an appointment with several procedures.
  */
 export default function FinalizePanel({
   state,
@@ -94,8 +94,8 @@ export default function FinalizePanel({
             {state.status === "loading" ? "Finalizando…" : "Finalizar procedimento"}
           </button>
 
-          {/* Consulta com mais de um procedimento: marca aqui e finaliza
-              tudo de uma vez pela barra flutuante. */}
+          {/* Appointment with more than one procedure: mark it here and
+              finalize everything at once from the floating bar. */}
           <button
             disabled={materialCount === 0}
             onClick={onToggleSession}

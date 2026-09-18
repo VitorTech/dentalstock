@@ -1,8 +1,8 @@
 /**
- * Casos de uso de materiais.
+ * Material use cases.
  *
- * Cada classe orquestra UMA operação (SRP). A validação vem dos Value Objects,
- * a persistência das portas.
+ * Each class orchestrates ONE operation (SRP). Validation comes from the value
+ * objects, persistence from the ports.
  */
 import { ImageUrl, type Material } from "@/modules/catalog/domain";
 import { CalendarDate, Money, NonEmptyText, NotFoundError, StockLevel, type Uuid, ValidationError } from "@/shared/domain";
@@ -50,12 +50,13 @@ export class CreateMaterialUseCase {
 }
 
 /**
- * Atualiza o cadastro de um material.
+ * Updates a material's catalog entry.
  *
- * Note o que este caso de uso NÃO faz: alterar o saldo. Isso é deliberado —
- * saldo só muda por movimento registrado (entrada, ajuste justificado, consumo,
- * balanço), em `stock.ts`. Enquanto a edição direta existia, o estoque mudava
- * sem deixar rastro e "sumiu material" era uma pergunta sem resposta.
+ * Note what this use case does NOT do: change the balance. That is deliberate —
+ * the balance only moves through a recorded movement (entry, justified
+ * adjustment, consumption), in the inventory module. While direct editing
+ * existed, stock changed without a trace and "material went missing" was a
+ * question with no answer.
  */
 export class UpdateMaterialUseCase {
   constructor(
@@ -90,8 +91,8 @@ export class UpdateMaterialUseCase {
         data.supplierId = null;
       } else {
         const supplierId = String(input.supplierId);
-        // Confirma que o fornecedor é da mesma clínica: sem isso, um id de
-        // outra clínica poderia ser vinculado (OWASP A01).
+        // Confirms the supplier belongs to the same clinic: without this, an
+        // id from another clinic could be linked (OWASP A01).
         const supplier = await this.suppliers.findById(tenantId, supplierId);
         if (!supplier) throw new NotFoundError("Fornecedor não encontrado.");
         data.supplierId = supplierId;

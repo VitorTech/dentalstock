@@ -11,12 +11,13 @@ import { adjustStock, registerEntry } from "./api";
 type Mode = "entry" | "adjust";
 
 /**
- * Entrada e ajuste de estoque.
+ * Stock entry and adjustment.
  *
- * São modos do mesmo diálogo, mas com semânticas distintas de propósito:
- * **entrada** SOMA o que chegou (é uma compra), **ajuste** DEFINE o saldo
- * correto (é uma correção) e exige motivo. Fundir os dois num campo só —
- * "novo estoque" — foi o que fez o sistema perder o rastro de tudo que entrava.
+ * Two modes of the same dialog, with deliberately distinct semantics:
+ * **entry** ADDS what arrived (it is a purchase), **adjustment** SETS the
+ * correct balance (it is a correction) and requires a reason. Merging the two
+ * into a single "new stock" field is what made the system lose track of
+ * everything that came in.
  */
 export default function StockEntryModal({
   material,

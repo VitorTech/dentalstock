@@ -3,21 +3,21 @@ import { ValidationError } from "@/shared/domain";
 import { HexColor, Slug } from "./value-objects";
 
 describe("Slug", () => {
-  it("remove acentos e normaliza separadores", () => {
+  it("strips accents and normalizes separators", () => {
     expect(Slug.fromName("Clínica São José").value).toBe("clinica-sao-jose");
   });
 
-  it("neutraliza caracteres perigosos de caminho", () => {
+  it("neutralizes dangerous path characters", () => {
     expect(Slug.fromName("../etc/passwd").value).toBe("etc-passwd");
     expect(Slug.fromName("a/b?c=1").value).toBe("a-b-c-1");
   });
 
-  it("nunca devolve vazio", () => {
+  it("never returns empty", () => {
     expect(Slug.fromName("🦷🦷").value).toBe("clinica");
     expect(Slug.fromName("").value).toBe("clinica");
   });
 
-  it("numera mantendo o limite de tamanho", () => {
+  it("numbers the variant while keeping the length limit", () => {
     const base = Slug.fromName("a".repeat(60));
     const numerado = base.withSuffix(12);
     expect(numerado.value.endsWith("-12")).toBe(true);
@@ -26,11 +26,11 @@ describe("Slug", () => {
 });
 
 describe("HexColor", () => {
-  it("aceita #RRGGBB e normaliza para minúsculas", () => {
+  it("accepts #RRGGBB and normalizes to lowercase", () => {
     expect(HexColor.create("#0071E3").value).toBe("#0071e3");
   });
 
-  it("recusa qualquer coisa fora do formato — é injeção de CSS", () => {
+  it("rejects anything outside the format — that is CSS injection", () => {
     expect(() => HexColor.create("red")).toThrow(ValidationError);
     expect(() => HexColor.create("#fff")).toThrow(ValidationError);
     expect(() => HexColor.create("#0071e3; background: url(x)")).toThrow(ValidationError);

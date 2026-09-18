@@ -1,13 +1,13 @@
-/** Portas do atendimento. */
+/** Clinical ports. */
 import type { ExecutionItemKind, ProcedureExecution } from "@/modules/clinical/domain";
 import type { Uuid } from "@/shared/domain";
 
 /**
- * Efetiva a finalização de um procedimento de forma atômica.
+ * Commits a procedure finalization atomically.
  *
- * O caso de uso decide O QUE fazer (via política pura); esta porta garante que
- * baixa de estoque, movimento e histórico aconteçam numa única transação —
- * detalhe de infraestrutura que não pertence à regra de negócio.
+ * The use case decides WHAT to do (through a pure policy); this port
+ * guarantees that stock deduction, movement and history happen in a single
+ * transaction — an infrastructure detail that does not belong to the rule.
  */
 export interface ExecutionCommitInput {
   procedureId: Uuid;
@@ -27,11 +27,11 @@ export interface ExecutionCommitInput {
 
 export interface ProcedureExecutionRepository {
   /**
-   * Efetiva uma ou mais finalizações numa única transação.
+   * Commits one or more finalizations in a single transaction.
    *
-   * Recebe uma lista porque o atendimento real costuma ter mais de um
-   * procedimento: se o segundo esbarrar em falta de estoque, o primeiro não
-   * pode ter sido baixado — ou tudo, ou nada.
+   * It takes a list because a real appointment usually has more than one
+   * procedure: if the second one hits insufficient stock, the first must not
+   * have been deducted — all or nothing.
    */
   commit(input: {
     tenantId: Uuid;
@@ -44,8 +44,8 @@ export interface ProcedureExecutionRepository {
   findById(tenantId: Uuid, id: Uuid): Promise<ProcedureExecution | null>;
 
   /**
-   * Estorna: devolve as quantidades e marca o registro. Transacional pelo mesmo
-   * motivo do commit — devolução parcial deixaria o estoque mentindo.
+   * Reversal: returns the quantities and marks the record. Transactional for
+   * the same reason as commit — a partial return would leave stock lying.
    */
   reverse(input: {
     tenantId: Uuid;
@@ -65,10 +65,10 @@ export interface ProcedureExecutionRepository {
 }
 
 /**
- * Relatórios de custo das execuções.
+ * Execution cost reports.
  *
- * Lê o custo congelado na finalização: o painel precisa mostrar o que custou
- * naquele dia. Execuções estornadas ficam de fora — elas foram desfeitas.
+ * Reads the cost frozen at finalize time: the dashboard must show what it cost
+ * that day. Reversed executions are excluded — they were undone.
  */
 export interface ExecutionCostReport {
   costByDay(tenantId: Uuid, days: number): Promise<{ date: string; total: number }[]>;

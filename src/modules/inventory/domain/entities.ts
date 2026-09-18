@@ -1,16 +1,16 @@
 /**
- * Estoque: o livro-razão de movimentos e as sessões de balanço.
+ * Inventory: the ledger of stock movements.
  *
- * O saldo em `Material.stock` é o resultado; os movimentos são a explicação.
+ * The balance in `Material.stock` is the result; movements are the explanation.
  */
 import type { Uuid } from "@/shared/domain";
 
 /**
- * Natureza de um movimento de estoque.
+ * Nature of a stock movement.
  *
- * `CONSUMPTION` sai pela finalização; `RESTOCK` entra por compra; `ADJUSTMENT`
- * é a correção manual justificada; `REVERSAL` devolve o que uma finalização
- * estornada havia consumido.
+ * `CONSUMPTION` leaves on finalize; `RESTOCK` enters on purchase; `ADJUSTMENT`
+ * is the justified manual correction; `REVERSAL` returns what a reversed
+ * finalization had consumed.
  */
 export type StockMovementType =
   | "CONSUMPTION"
@@ -23,7 +23,7 @@ export interface StockMovement {
   materialId: Uuid;
   materialName: string;
   unit: string;
-  /** Negativo = saída, positivo = entrada. */
+  /** Negative = out, positive = in. */
   quantity: number;
   type: StockMovementType;
   note: string | null;

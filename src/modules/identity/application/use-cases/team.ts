@@ -1,20 +1,18 @@
 /**
- * Equipe da clínica.
+ * The clinic's team.
  *
- * Diferente de `administration.ts`, que é o console da PLATAFORMA: aqui quem
- * age é a própria clínica, gerenciando os acessos da sua equipe. Toda operação
- * é restrita ao tenant do ator — nenhum método recebe tenantId de fora, ele vem
- * sempre da identidade autenticada.
+ * Here the clinic itself is the actor, managing its own staff's access. Every
+ * operation is scoped to the actor's tenant — no method takes a tenantId from
+ * the outside, it always comes from the authenticated identity.
  *
- * Trava importante: o papel `OWNER` (administrador da plataforma) não é
- * atribuível por aqui. Se fosse, qualquer clínica poderia se promover a
- * operadora do sistema pelo formulário de convite.
+ * Important guard: the `OWNER` role is not assignable through these use cases.
+ * Otherwise any member could promote themselves through the invite form.
  */
 import { PlainPassword, type User, canManageTeam } from "@/modules/identity/domain";
 import { type AuthenticatedActor, BusinessRuleError, ConflictError, Email, ForbiddenError, NonEmptyText, NotFoundError, type UserRole, type Uuid } from "@/shared/domain";
 import type { PasswordHasher, SessionRepository, UserRepository } from "../ports";
 
-/** Papéis que a clínica pode conceder à sua equipe. */
+/** Roles a clinic may grant to its own team. */
 const ASSIGNABLE_ROLES: readonly UserRole[] = ["MEMBER", "ASSISTANT"];
 
 function readAssignableRole(raw: unknown): UserRole {
@@ -84,8 +82,8 @@ export class ChangeTeamMemberRoleUseCase {
     requireManager(actor);
     const role = readAssignableRole(roleRaw);
 
-    // Rebaixar a si mesmo tiraria o último acesso capaz de gerenciar equipe —
-    // a clínica ficaria sem quem conceda permissão de volta.
+    // Demoting yourself would remove the last access able to manage the team —
+    // the clinic would be left with nobody able to grant permissions back.
     if (userId === actor.userId) {
       throw new BusinessRuleError("Você não pode alterar o seu próprio papel.");
     }
@@ -98,8 +96,8 @@ export class ChangeTeamMemberRoleUseCase {
 
     const updated = await this.users.updateRole(actor.tenantId, userId, role);
 
-    // O papel viaja no token: sem encerrar as sessões, o usuário continuaria
-    // com as permissões antigas até o cookie expirar (OWASP A01).
+    // The role travels inside the token: without ending the sessions, the user
+    // would keep the old permissions until the cookie expired (OWASP A01).
     await this.sessions.revokeAllForUser(userId);
     return updated;
   }
@@ -143,8 +141,8 @@ export class ResetTeamMemberPasswordUseCase {
     }
 
     await this.users.updatePassword(user.id, await this.hasher.hash(password.value));
-    // Mesma razão de `ResetUserPasswordUseCase`: senha trocada por suspeita de
-    // vazamento não protege nada se o cookie antigo continuar valendo.
+    // Same reason as changing a role: a password rotated after a suspected
+    // leak protects nothing while the old cookie still works.
     await this.sessions.revokeAllForUser(user.id);
   }
 }

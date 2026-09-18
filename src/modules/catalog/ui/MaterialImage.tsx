@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-/** Gera um avatar estável baseado nas iniciais do material, usado quando
- * não há imagem cadastrada ou quando a imagem informada falha ao carregar. */
+/** Builds a stable avatar from the material's initials, used when no image is
+ * registered or when the given image fails to load. */
 export function fallbackImageSrc(name: string) {
   return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
     name
@@ -26,9 +26,9 @@ export default function MaterialImage({
   const [triedFallback, setTriedFallback] = useState(false);
 
   return (
-    // `<img>` de propósito: as imagens vêm de URLs arbitrárias cadastradas pela
-    // clínica, e o otimizador `/_next/image` exigiria liberar domínios remotos
-    // (e é a superfície das vulnerabilidades do Next 14 citadas na auditoria).
+    // A plain `<img>` on purpose: images come from arbitrary URLs entered by
+    // the clinic, and the `/_next/image` optimizer would require allowlisting
+    // remote domains (and is the surface of the Next 14 advisories).
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}

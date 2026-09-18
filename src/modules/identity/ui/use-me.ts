@@ -3,78 +3,77 @@
 import { useEffect, useState } from "react";
 import { getSession, type SessionView } from "./api";
 
-/** Identidade da sessão, como a tela a enxerga. */
+/** Session identity, as the screens see it. */
 export type Me = SessionView;
 
 /**
- * Cache de módulo da identidade da sessão.
+ * Module-level cache of the session identity.
  *
- * Existe por um motivo medido: o hook é consumido pelo cabeçalho, pela página E
- * por cada card de procedimento. Sem cache, abrir uma especialidade com 12
- * procedimentos disparava 14 chamadas idênticas a /api/auth/me — e cada uma
- * custa três consultas ao banco (sessão, clínica e usuário).
+ * It exists for a measured reason: the hook is consumed by the header, by the
+ * page AND by every procedure card. Without the cache, opening a specialty
+ * with 12 procedures fired 14 identical calls to /api/auth/me — and each one
+ * costs three database queries (session, clinic and user).
  *
- * `emVoo` é o que resolve o caso real: os componentes montam no mesmo tick, de
- * modo que um cache preenchido só ao fim da primeira resposta chegaria tarde
- * demais. Compartilhando a promessa, as montagens simultâneas aguardam a MESMA
- * requisição.
+ * `inFlight` is what solves the real case: the components mount on the same
+ * tick, so a cache filled only when the first response lands would arrive too
+ * late. By sharing the promise, simultaneous mounts await the SAME request.
  *
- * O escopo é a carga da página. Sair da conta faz navegação dura
- * (`window.location`), que recria o módulo — não há risco de identidade velha
- * sobreviver a uma troca de usuário.
+ * The scope is the page load. Signing out performs a hard navigation
+ * (`window.location`), which recreates the module — there is no risk of a
+ * stale identity surviving a user switch.
  */
 let cache: Me | null = null;
-let emVoo: Promise<Me | null> | null = null;
-const inscritos = new Set<(me: Me | null) => void>();
+let inFlight: Promise<Me | null> | null = null;
+const subscribers = new Set<(me: Me | null) => void>();
 
-async function carregar(): Promise<Me | null> {
+async function load(): Promise<Me | null> {
   if (cache) return cache;
 
-  emVoo ??= getSession().then((data) => {
-    // Falha não é memorizada: o próximo componente a montar tenta de novo,
-    // em vez de a tela ficar presa num erro momentâneo de rede.
+  inFlight ??= getSession().then((data) => {
+    // Failures are not memoized: the next component to mount tries again,
+    // instead of the screen being stuck on a momentary network error.
     if (data) cache = data;
-    emVoo = null;
-    inscritos.forEach((notificar) => notificar(data));
+    inFlight = null;
+    subscribers.forEach((notify) => notify(data));
     return data;
   });
 
-  return emVoo;
+  return inFlight;
 }
 
-/** Descarta a identidade memorizada (troca de clínica, mudança de papel). */
+/** Drops the memoized identity (clinic switch, role change). */
 export function invalidateMe() {
   cache = null;
-  emVoo = null;
+  inFlight = null;
 }
 
 /**
- * Identidade da sessão atual, para a interface se adaptar ao papel.
+ * The current session identity, so the interface can adapt to the role.
  *
- * Importante: isto é CONVENIÊNCIA VISUAL, não segurança. Esconder um botão não
- * protege nada — quem decide é o guarda da rota, no servidor. A tela usa isto
- * apenas para não oferecer uma ação que resultaria em 403.
+ * Important: this is VISUAL CONVENIENCE, not security. Hiding a button
+ * protects nothing — the route guard on the server is what decides. The screen
+ * uses this only to avoid offering an action that would end in a 403.
  */
 export function useMe() {
   const [me, setMe] = useState<Me | null>(cache);
   const [loading, setLoading] = useState(cache === null);
 
   useEffect(() => {
-    let ativo = true;
-    const receber = (valor: Me | null) => {
-      if (ativo) setMe(valor);
+    let active = true;
+    const receive = (value: Me | null) => {
+      if (active) setMe(value);
     };
-    inscritos.add(receber);
+    subscribers.add(receive);
 
-    carregar().then((valor) => {
-      if (!ativo) return;
-      setMe(valor);
+    load().then((value) => {
+      if (!active) return;
+      setMe(value);
       setLoading(false);
     });
 
     return () => {
-      ativo = false;
-      inscritos.delete(receber);
+      active = false;
+      subscribers.delete(receive);
     };
   }, []);
 
@@ -83,9 +82,9 @@ export function useMe() {
   return {
     me,
     loading,
-    /** Pode alterar o cadastro da clínica (materiais, procedimentos, kits). */
+    /** May change the clinic's catalog (materials, instruments, procedures). */
     canManage: role === "OWNER" || role === "MEMBER",
-    /** Pode ver valores. */
+    /** May see costs. */
     canSeeCosts: role === "OWNER" || role === "MEMBER",
   };
 }

@@ -1,8 +1,8 @@
 /**
- * Casos de uso de montagem de procedimentos.
+ * Procedure composition use cases.
  *
- * Definem O QUE cada procedimento consome. Executá-lo — baixar estoque e
- * registrar histórico — é responsabilidade do módulo clínico.
+ * They define WHAT each procedure consumes. Executing it — deducting stock and
+ * recording history — belongs to the clinical module.
  */
 import type { Procedure } from "@/modules/catalog/domain";
 import { BusinessRuleError, NonEmptyText, NotFoundError, Quantity, type Uuid } from "@/shared/domain";
@@ -50,11 +50,11 @@ export class DeleteProcedureUseCase {
 }
 
 /**
- * Duplica um procedimento com toda a sua lista.
+ * Duplicates a procedure with its whole item list.
  *
- * Existe porque variações compartilham quase tudo — "Restauração classe I" e
- * "classe II" diferem em dois itens. Sem isso, cada variação é remontada item
- * por item, que é justamente onde o cadastro fica incompleto.
+ * It exists because variations share almost everything — "Class I restoration"
+ * and "Class II" differ by two items. Without it, each variation is rebuilt
+ * item by item, which is exactly where catalogs end up incomplete.
  */
 export class DuplicateProcedureUseCase {
   constructor(private readonly procedures: ProcedureRepository) {}
@@ -72,7 +72,7 @@ export class DuplicateProcedureUseCase {
   }
 }
 
-/** Vincula material ao procedimento, conferindo que ambos são da clínica. */
+/** Links a material to a procedure, checking both belong to the clinic. */
 export class LinkMaterialToProcedureUseCase {
   constructor(
     private readonly procedures: ProcedureRepository,

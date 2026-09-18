@@ -4,14 +4,14 @@ out/
 build/
 coverage/
 
-# Segredos e ambiente local — nunca versionados.
+# Secrets and local environment — never committed.
 .env
 .env.local
 .env.*.local
 *.pem
 *.key
 
-# Sistema e editor
+# OS and editor
 .DS_Store
 Thumbs.db
 *.log
@@ -19,5 +19,5 @@ tsconfig.tsbuildinfo
 .vscode/
 .idea/
 
-# Configuração local de ferramentas de desenvolvimento
+# Local tooling configuration
 .claude/

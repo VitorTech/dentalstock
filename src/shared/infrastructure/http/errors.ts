@@ -1,28 +1,25 @@
 /**
- * Tradução de erro de domínio para HTTP.
+ * Translation from domain error to HTTP.
  *
- * Este é o único lugar que conhece códigos HTTP; os casos de uso lançam erros
- * de negócio e ignoram protocolo.
+ * This is the only place that knows HTTP status codes; use cases throw
+ * business errors and ignore the protocol.
  *
- * Regra de segurança (OWASP A09 — falhas de log e monitoramento / A05):
- * erros inesperados devolvem mensagem genérica ao cliente e detalham apenas no
- * log do servidor. Stack trace e mensagem de banco nunca vão para a resposta,
- * porque revelam schema e caminhos internos.
+ * Security rule (OWASP A05/A09): unexpected errors return a generic message to
+ * the client and are detailed only in the server log. Stack traces and
+ * database messages never reach the response, because they reveal the schema
+ * and internal paths.
  */
 import { NextResponse } from "next/server";
-import { BusinessRuleError, ConflictError, DomainError, ExternalServiceError, ForbiddenError, NotFoundError, PaymentRequiredError, ServiceUnavailableError, TooManyRequestsError, UnauthorizedError, ValidationError } from "@/shared/domain";
+import { BusinessRuleError, ConflictError, DomainError, ForbiddenError, NotFoundError, TooManyRequestsError, UnauthorizedError, ValidationError } from "@/shared/domain";
 
 const STATUS_BY_ERROR: [new (...args: never[]) => DomainError, number][] = [
   [ValidationError, 400],
   [UnauthorizedError, 401],
-  [PaymentRequiredError, 402],
   [ForbiddenError, 403],
   [NotFoundError, 404],
   [ConflictError, 409],
   [BusinessRuleError, 422],
   [TooManyRequestsError, 429],
-  [ExternalServiceError, 502],
-  [ServiceUnavailableError, 503],
 ];
 
 export function toHttpResponse(error: unknown): NextResponse {
@@ -38,8 +35,8 @@ export function toHttpResponse(error: unknown): NextResponse {
       },
       {
         status,
-        // O cliente precisa saber quanto esperar; sem isso, a tela só pode
-        // sugerir "tente de novo" e o usuário tenta na hora, de novo bloqueado.
+        // The client needs to know how long to wait. Without this the screen
+        // can only say "try again", so the user retries at once — blocked again.
         headers:
           error instanceof TooManyRequestsError
             ? { "Retry-After": String(error.retryAfterSeconds) }
@@ -48,15 +45,15 @@ export function toHttpResponse(error: unknown): NextResponse {
     );
   }
 
-  // Inesperado: registra o detalhe e responde de forma opaca.
-  console.error("[erro não tratado]", error);
+  // Unexpected: log the detail, answer opaquely.
+  console.error("[unhandled error]", error);
   return NextResponse.json(
     { error: "Erro interno. Tente novamente.", code: "INTERNAL_ERROR" },
     { status: 500 }
   );
 }
 
-/** Envelopa um handler para que nenhuma exceção escape sem tradução. */
+/** Wraps a handler so that no exception escapes untranslated. */
 export function withErrorHandling<Args extends unknown[]>(
   handler: (...args: Args) => Promise<NextResponse>
 ): (...args: Args) => Promise<NextResponse> {

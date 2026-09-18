@@ -35,11 +35,11 @@ export default function ConfiguracoesPage() {
       await updateTenantSettings(patch);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1500);
-      // relê o layout no servidor para o tema valer em toda a navegação
+      // re-reads the layout on the server so the theme applies across navigation
       router.refresh();
     } catch {
-      // Preferência visual: manter a escolha aplicada localmente é melhor que
-      // reverter a tela na cara do usuário por uma falha momentânea.
+      // Visual preference: keeping the choice applied locally beats reverting
+      // the screen in the user's face over a momentary failure.
     }
   };
 
@@ -80,7 +80,7 @@ export default function ConfiguracoesPage() {
           )}
         </div>
 
-        {/* Tema */}
+        {/* Theme */}
         <div className="mb-6 rounded-xl2 border border-hairline bg-surface p-6 shadow-card">
           <h2 className="mb-1 text-[16px] font-semibold text-ink">Tema</h2>
           <p className="mb-4 text-[13px] text-subink">
@@ -107,7 +107,7 @@ export default function ConfiguracoesPage() {
           </div>
         </div>
 
-        {/* Cor de destaque */}
+        {/* Accent color */}
         <div className="rounded-xl2 border border-hairline bg-surface p-6 shadow-card">
           <div className="mb-1 flex items-center gap-2">
             <Palette size={16} className="text-subink" />

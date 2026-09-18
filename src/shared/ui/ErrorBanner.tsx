@@ -3,11 +3,11 @@
 import { TriangleAlert } from "lucide-react";
 
 /**
- * Aviso de falha no topo da lista.
+ * Failure notice at the top of a list.
  *
- * Existe porque escrita que falha em silêncio é pior que erro visível: o
- * usuário fecha a tela achando que salvou. Renderiza nada quando não há
- * mensagem, para o chamador não precisar de condicional.
+ * It exists because a silent write failure is worse than a visible error: the
+ * user closes the screen believing the change was saved. Renders nothing when
+ * there is no message, so callers need no conditional.
  */
 export default function ErrorBanner({ message }: { message: string | null }) {
   if (!message) return null;

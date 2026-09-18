@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Boxes } from "lucide-react";
 
-/** Blocos de indicador do painel. */
+/** Dashboard indicator blocks. */
 export function Kpi({
   icon: Icon,
   label,

@@ -1,22 +1,22 @@
 "use client";
 
-/** Operações de identidade: sessão, login e equipe. */
+/** Identity operations: session, login and team. */
 import { apiGet, apiSend } from "@/shared/ui/api-client";
 import type { UserRole } from "@/shared/domain";
 import type { TeamUser } from "./team";
 
-/** Identidade da sessão, como `/api/auth/me` devolve. */
+/** Session identity, as `/api/auth/me` returns it. */
 export interface SessionView {
   user: { name: string; email: string; role: UserRole };
   tenant: { name: string };
 }
 
 /**
- * Sessão atual; `null` quando não há sessão válida.
+ * The current session; `null` when there is none.
  *
- * Não usa `apiGet` de propósito: 401 aqui é uma resposta legítima ("ninguém
- * logado"), e não motivo para mandar o visitante ao login — esta chamada roda
- * inclusive no cabeçalho de páginas públicas.
+ * It does not use `apiGet` on purpose: a 401 here is a legitimate answer
+ * ("nobody signed in"), not a reason to push the visitor to the login page —
+ * this call also runs in the header of public pages.
  */
 export async function getSession(): Promise<SessionView | null> {
   try {
@@ -32,7 +32,7 @@ export const login = (credentials: { email: string; password: string }) =>
 
 export const logout = () => apiSend("/api/auth/logout", "POST");
 
-// ── Equipe ─────────────────────────────────────────────────────────────────
+// ── Team ───────────────────────────────────────────────────────────────────
 
 export const listTeam = () => apiGet<TeamUser[]>("/api/team", []);
 

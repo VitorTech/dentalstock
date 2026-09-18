@@ -1,49 +1,49 @@
 /**
- * Políticas de estoque: validade, custo médio, reposição e balanço.
+ * Inventory policies: expiry and weighted average cost.
  *
- * O nível de estoque (`isLowStock`, `isOutOfStock`) é do catálogo.
+ * Stock level (`isLowStock`, `isOutOfStock`) belongs to the catalog.
  *
- * Funções puras, sem efeito colateral — testáveis sem banco, HTTP ou mocks, e
- * seguras para uso também na interface.
+ * Pure functions, no side effects — testable without a database, HTTP or
+ * mocks, and safe to use on the client as well.
  */
 import { DAY_MS, toCents, toDate, type DateLike } from "@/shared/domain";
 
-/** Antecedência com que uma validade vira alerta na tela. */
+/** How far ahead an expiry date turns into an on-screen warning. */
 export const EXPIRY_WARNING_DAYS = 30;
 
-/** Só o que a regra de validade precisa: aceita entidade ou resposta da API. */
+/** Only what the expiry rule needs: accepts an entity or an API response. */
 type Expirable = { expiresAt: DateLike | null };
 
 export function isExpired(item: Expirable, now: Date = new Date()): boolean {
   return item.expiresAt !== null && toDate(item.expiresAt).getTime() < now.getTime();
 }
 
-/** Vence dentro da janela de alerta (e ainda não venceu). */
+/** Expires within the warning window (and has not expired yet). */
 export function isExpiringSoon(item: Expirable, now: Date = new Date()): boolean {
   if (item.expiresAt === null || isExpired(item, now)) return false;
   return toDate(item.expiresAt).getTime() - now.getTime() <= EXPIRY_WARNING_DAYS * DAY_MS;
 }
 
-/** Vencido ou dentro da janela: é o que a tela sinaliza como "validade". */
+/** Expired or inside the window: what the screen flags as "expiry". */
 export function needsExpiryAttention(item: Expirable, now: Date = new Date()): boolean {
   return isExpired(item, now) || isExpiringSoon(item, now);
 }
 
-/** Dias até vencer — negativo quando já venceu. */
+/** Days until expiry — negative once it has expired. */
 export function daysUntilExpiry(item: Expirable, now: Date = new Date()): number | null {
   if (item.expiresAt === null) return null;
   return Math.ceil((toDate(item.expiresAt).getTime() - now.getTime()) / DAY_MS);
 }
 
 /**
- * Custo médio ponderado após uma entrada.
+ * Weighted average cost after an entry.
  *
- * Preferido ao "último preço pago" porque o estoque da clínica é uma mistura:
- * trocar o custo pelo da nota mais recente faria o relatório do mês inteiro
- * saltar por causa de uma compra pequena a preço promocional.
+ * Preferred over "last price paid" because clinic stock is a blend: swapping
+ * the cost for the most recent invoice would make a whole month's report jump
+ * because of one small purchase at a promotional price.
  *
- * Quando não há custo anterior (primeira entrada), o custo da entrada passa a
- * valer integralmente — não há o que ponderar.
+ * When there is no previous cost (first entry), the incoming cost applies in
+ * full — there is nothing to weight against.
  */
 export function weightedAverageCost(input: {
   currentStock: number;

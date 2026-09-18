@@ -1,6 +1,6 @@
 "use client";
 
-/** Leitura do painel. Só leitura: analytics não altera nada. */
+/** Dashboard read. Read-only: analytics changes nothing. */
 import { apiGet } from "@/shared/ui/api-client";
 
 export interface DashboardView {
@@ -34,7 +34,7 @@ export interface DashboardView {
     daysLeft: number;
     expired: boolean;
   }[];
-  /** Ausente quando o papel não pode ver valores. */
+  /** Absent when the role may not see amounts. */
   cost: {
     total30d: number;
     byDay: { date: string; total: number }[];

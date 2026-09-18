@@ -60,7 +60,7 @@ export default function FornecedoresPage() {
     );
   }, [suppliers, query]);
 
-  /** Mostra a mensagem do servidor: escrita que falha calada engana o usuário. */
+  /** Shows the server message: a write that fails silently misleads the user. */
   const report = (e: unknown) =>
     setError(e instanceof ApiError ? e.message : "Não foi possível concluir a operação.");
 
@@ -92,7 +92,7 @@ export default function FornecedoresPage() {
     try {
       await deleteSupplier(id);
       setSuppliers((prev) => prev.filter((s) => s.id !== id));
-      // Materiais vinculados perderam o fornecedor (SetNull) — recarrega contagem.
+      // Linked materials lost their supplier (SetNull) — refresh the counts.
       setMaterials((prev) => prev.map((m) => (m.supplierId === id ? { ...m, supplierId: null, supplier: null } : m)));
     } catch (e) {
       report(e);
@@ -104,8 +104,8 @@ export default function FornecedoresPage() {
     setShowCreate(false);
   };
 
-  // Vincula (supplierId != null) ou desvincula (null) um material, atualizando
-  // o estado local para refletir chips e contagens imediatamente.
+  // Links (supplierId != null) or unlinks (null) a material, updating local
+  // state so chips and counters react immediately.
   const handleLinkMaterial = async (materialId: string, supplierId: string | null) => {
     setError(null);
     try {

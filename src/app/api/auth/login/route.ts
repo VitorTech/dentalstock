@@ -1,8 +1,8 @@
 /**
- * Adaptador de entrada: POST /api/auth/login
+ * Inbound adapter: POST /api/auth/login
  *
- * Responsabilidade única — traduzir HTTP para o caso de uso e de volta.
- * Não há regra de negócio nem acesso a banco aqui.
+ * Single responsibility — translate HTTP into the use case and back. There is
+ * no business rule and no database access here.
  */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
@@ -17,13 +17,13 @@ export const POST = route("public", async ({ req }) => {
   const result = await container.identity.login.execute({
     email: body.email,
     password: body.password,
-    // Origem da tentativa: entra no limite por IP. O caso de uso não sabe o que
-    // é um cabeçalho — quem lê o protocolo é esta rota.
+    // Origin of the attempt: feeds the per-IP limit. The use case knows
+    // nothing about headers — reading the protocol is this route's job.
     ipAddress: readClientIp(req),
   });
 
-  // O token é entregue em cookie httpOnly — nunca no corpo da resposta, para
-  // não ficar acessível a JavaScript nem em histórico/log de rede.
+  // The token is delivered in an httpOnly cookie — never in the response body,
+  // so it stays out of reach of JavaScript and of network history/logs.
   await container.identity.tokenTransport().write(result.token, result.expiresAt);
 
   return NextResponse.json({ ok: true });

@@ -5,16 +5,14 @@ import { useRouter } from "next/navigation";
 import { logout as logoutRequest } from "./api";
 
 /**
- * Encerra a sessão e devolve o usuário ao login.
+ * Ends the session and sends the user back to the login page.
  *
- * Vive em um hook, e não dentro de um menu, porque encerrar sessão precisa
- * estar disponível em telas que não têm o menu do app — em especial a de
- * assinatura, que é para onde o usuário bloqueado é levado. Sem uma saída ali,
- * ele fica preso: o middleware enxerga o cookie e devolve quem tenta ir ao
- * /login para dentro do app, que bloqueia de novo.
+ * It lives in a hook, not inside a menu, because signing out must be available
+ * on screens that do not render the app menu.
  *
- * A ordem importa: só navegamos depois que a rota de logout respondeu, porque
- * é ela que apaga o cookie. Navegar antes recriaria o mesmo laço.
+ * Order matters: we only navigate after the logout route has answered, since
+ * that is what clears the cookie. Navigating first would bounce the user back
+ * into the app — the middleware only checks that the cookie exists.
  */
 export function useLogout() {
   const router = useRouter();
@@ -25,9 +23,9 @@ export function useLogout() {
     try {
       await logoutRequest();
     } catch {
-      // Falha de rede não pode prender o usuário: seguimos para o login de
-      // qualquer forma. A sessão continua válida no servidor, mas ele deixa de
-      // ficar sem saída — e a rota de logout é idempotente na próxima tentativa.
+      // A network failure must not trap the user: head to the login page
+      // anyway. The session stays valid on the server, but the user is no
+      // longer stuck — and the logout route is idempotent on the next try.
     }
     router.replace("/login");
     router.refresh();

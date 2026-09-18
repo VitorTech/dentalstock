@@ -1,9 +1,8 @@
 /**
- * Provisiona uma nova clínica (tenant) com o usuário dono.
+ * Provisions a new clinic (tenant) together with its owner user.
  *
- * Uso:
- *   npm run tenant:create -- "Clínica Sorriso" sorriso dono@sorriso.com "SenhaForte123" "Dra. Ana"
- *
+ * Usage:
+ *   npm run tenant:create -- "Clinica Sorriso" sorriso owner@sorriso.com "StrongPass123" "Dra. Ana"
  */
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scryptSync } from "crypto";
@@ -20,13 +19,13 @@ async function main() {
 
   if (!name || !slug || !email || !password) {
     console.error(
-      'Uso: npm run tenant:create -- "<Nome da Clínica>" <slug> <email> <senha> ["<Nome do usuário>"]'
+      'Usage: npm run tenant:create -- "<Clinic name>" <slug> <email> <password> ["<User name>"]'
     );
     process.exit(1);
   }
 
   if (password.length < 8) {
-    console.error("A senha deve ter pelo menos 8 caracteres.");
+    console.error("The password must be at least 8 characters long.");
     process.exit(1);
   }
 
@@ -44,10 +43,10 @@ async function main() {
     },
   });
 
-  console.log(`✔ Clínica "${name}" criada (slug: ${tenant.slug}, id: ${tenant.id})`);
-  console.log(`✔ Usuário dono: ${email.toLowerCase()}`);
+  console.log(`✔ Clinic "${name}" created (slug: ${tenant.slug}, id: ${tenant.id})`);
+  console.log(`✔ Owner user: ${email.toLowerCase()}`);
   console.log(
-    "\nA clínica começa vazia — cadastre materiais, instrumentais e procedimentos pela interface."
+    "\nThe clinic starts empty — add materials, instruments and procedures through the interface."
   );
 }
 

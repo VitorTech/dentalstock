@@ -1,4 +1,4 @@
-/** Adaptador de entrada: /api/materials */
+/** Inbound adapter: /api/materials */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";

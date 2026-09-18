@@ -1,9 +1,9 @@
 /**
- * Contrato HTTP do estoque.
+ * Inventory HTTP contract.
  *
- * A remoção de custo para quem não pode vê-lo acontece aqui, e não na tela nem
- * espalhada pelas rotas: o DTO é a fronteira. Esconder um valor na interface
- * não protege nada se ele trafega na resposta.
+ * Stripping cost from whoever may not see it happens here, not on the screen
+ * nor scattered across routes: the DTO is the boundary. Hiding a value in the
+ * interface protects nothing if it still travels in the response.
  */
 import { canSeeCosts } from "@/modules/identity/domain";
 import type { StockMovement } from "@/modules/inventory/domain";

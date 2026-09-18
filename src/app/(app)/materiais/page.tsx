@@ -36,8 +36,8 @@ export default function MateriaisPage() {
 
   useEffect(() => {
     loadData();
-    // Ativa o filtro automaticamente quando chega pelo informativo do cabeçalho
-    // (/materiais?status=baixa ou ?status=validade).
+    // Turns the filter on automatically when arriving from the header notice
+    // (/materiais?status=baixa or ?status=validade).
     const params = new URLSearchParams(window.location.search);
     const status = params.get("status");
     if (status === "baixa") setFilter("low");
@@ -67,7 +67,7 @@ export default function MateriaisPage() {
   const replaceMaterial = (updated: Material) =>
     setMaterials((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
 
-  /** Mostra a mensagem do servidor: escrita que falha calada engana o usuário. */
+  /** Shows the server message: a write that fails silently misleads the user. */
   const report = (e: unknown) =>
     setError(e instanceof ApiError ? e.message : "Não foi possível concluir a operação.");
 

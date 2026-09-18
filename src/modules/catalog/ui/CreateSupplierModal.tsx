@@ -7,7 +7,7 @@ import type { Supplier } from "@/modules/catalog/domain";
 import { ApiError } from "@/shared/ui/api-client";
 import { createSupplier } from "./api";
 
-/** Modal de cadastro de fornecedor. */
+/** Supplier registration modal. */
 export default function CreateSupplierModal({
   onClose,
   onCreated,

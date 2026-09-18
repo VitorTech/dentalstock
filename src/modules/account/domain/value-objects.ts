@@ -1,12 +1,12 @@
-/** Value Objects da conta: documento fiscal, endereço e identidade visual da clínica. */
+/** Account value objects: the clinic's URL slug and visual identity. */
 import { ValidationError } from "@/shared/domain";
 
 /**
- * Identificador de clínica usado em URL.
+ * Clinic identifier used in URLs.
  *
- * Derivado do nome por transformação determinística e allowlist final
- * (`a-z0-9-`): mesmo que o nome traga acento, emoji ou `../`, o resultado só
- * contém caracteres seguros para caminho e para consulta.
+ * Derived from the name by a deterministic transformation plus a final
+ * allowlist (`a-z0-9-`): even if the name carries accents, emoji or `../`, the
+ * result only contains characters that are safe in a path and in a query.
  */
 export class Slug {
   private constructor(readonly value: string) {}
@@ -14,12 +14,12 @@ export class Slug {
   private static readonly MAX = 40;
   private static readonly FALLBACK = "clinica";
 
-  /** Deriva o slug a partir de um nome livre. Nunca lança: sempre há saída. */
+  /** Derives the slug from a free-form name. Never throws: there is always an output. */
   static fromName(name: string): Slug {
     const normalized = name
       .toLowerCase()
       .normalize("NFD")
-      // Após o NFD os acentos ficam como marcas combinantes (não-ASCII).
+      // After NFD, accents become combining marks (non-ASCII).
       .replace(/[^\x00-\x7F]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
@@ -29,7 +29,7 @@ export class Slug {
     return new Slug(normalized || Slug.FALLBACK);
   }
 
-  /** Variante numerada, para quando o slug base já está em uso. */
+  /** Numbered variant, for when the base slug is already taken. */
   withSuffix(n: number): Slug {
     const suffix = `-${n}`;
     const base = this.value.slice(0, Slug.MAX - suffix.length).replace(/-+$/g, "");
@@ -41,7 +41,7 @@ export class Slug {
   }
 }
 
-/** Cor hexadecimal #RRGGBB — allowlist estrita para impedir injeção de CSS. */
+/** Hex color #RRGGBB — strict allowlist to prevent CSS injection. */
 export class HexColor {
   private constructor(readonly value: string) {}
 

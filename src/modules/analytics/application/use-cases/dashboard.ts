@@ -1,12 +1,12 @@
 /**
- * Caso de uso do painel.
+ * Dashboard use case.
  *
- * O painel não tem porta nem adaptador próprios: compõe os relatórios que cada
- * módulo expõe sobre os próprios dados — consumo (estoque), custo (atendimento)
- * e cadastro (catálogo). A agregação pesada continua no banco; aqui só se
- * combinam os resultados e se aplicam as regras de apresentação — por exemplo,
- * o ranking usa consumo REAL, então clínica que nunca finalizou procedimento
- * aparece zerada em vez de exibir demanda teórica.
+ * The dashboard has no port or adapter of its own: it composes the reports
+ * each module exposes over its own data — consumption (inventory), cost
+ * (clinical) and catalog entries. Heavy aggregation stays in the database;
+ * here the results are combined and presentation rules applied — for example,
+ * the ranking uses REAL consumption, so a clinic that never finalized a
+ * procedure shows zeros instead of theoretical demand.
  */
 import type { MaterialRepository, SupplierRepository } from "@/modules/catalog/application";
 import type { ExecutionCostReport } from "@/modules/clinical/application";
@@ -43,7 +43,7 @@ export interface DashboardView {
     supplier: string | null;
     zero: boolean;
   }[];
-  /** Materiais vencidos ou perto de vencer, os vencidos primeiro. */
+  /** Expired or soon-to-expire materials, expired ones first. */
   expiring: {
     id: string;
     name: string;
@@ -54,15 +54,15 @@ export interface DashboardView {
     expired: boolean;
   }[];
   /**
-   * Bloco de custo. `null` quando o papel não pode ver valores — omitir do DTO
-   * é mais seguro do que mandar e esconder na tela.
+   * Cost block. `null` when the role may not see amounts — omitting it from
+   * the DTO is safer than sending it and hiding it on screen.
    */
   cost: {
     total30d: number;
     byDay: { date: string; total: number }[];
     bySpecialty: { name: string; total: number }[];
     byProcedure: { name: string; total: number; executions: number; average: number }[];
-    /** Materiais sem preço cadastrado — o total é parcial enquanto houver. */
+    /** Materials with no price — the total stays partial while any remain. */
     materialsWithoutCost: number;
   } | null;
 }
@@ -106,7 +106,7 @@ export class GetDashboardUseCase {
       .sort((a, b) => b.total - a.total)
       .slice(0, TOP_SIZE);
 
-    // Mais crítico primeiro: quem está mais abaixo do mínimo aparece no topo.
+    // Most critical first: whoever is furthest below the minimum tops the list.
     const lowStock = allMaterials
       .filter(isLowStock)
       .map((m) => ({
@@ -120,7 +120,7 @@ export class GetDashboardUseCase {
       }))
       .sort((a, b) => a.stock - a.minStock - (b.stock - b.minStock));
 
-    // Vencido antes de "vence em breve": é o que precisa sair da prateleira hoje.
+    // Expired before "expiring soon": that is what must leave the shelf today.
     const expiring = allMaterials
       .filter((m) => needsExpiryAttention(m))
       .map((m) => ({
@@ -167,9 +167,9 @@ export class GetDashboardUseCase {
         .filter((s) => s.total > 0)
         .sort((a, b) => b.total - a.total)
         .slice(0, TOP_SIZE),
-      // Custo MÉDIO por procedimento é o número que o dentista procura
-      // ("quanto me custa uma restauração?"); o total sozinho só reflete quantos
-      // foram feitos.
+      // AVERAGE cost per procedure is the number a dentist looks for ("how much
+      // does a restoration cost me?"); the total alone only reflects how many
+      // were performed.
       byProcedure: byProcedure
         .filter((p) => p.executions > 0 && p.total > 0)
         .map((p) => ({ ...p, average: toCents(p.total / p.executions) }))

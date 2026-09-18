@@ -1,21 +1,21 @@
 "use client";
 
 /**
- * Operações clínicas disponíveis às telas: finalização (avulsa ou de consulta
- * com vários procedimentos), histórico e estorno.
+ * Clinical operations available to the screens: finalization (single or for an
+ * appointment with several procedures), history and reversal.
  *
- * A finalização tem um detalhe que não é erro: o 409 é resultado ESPERADO —
- * significa que a transação inteira foi recusada por falta de estoque, e a
- * resposta traz o que faltou. Por isso ela não usa `apiSend`, que trataria
- * qualquer não-2xx como falha sem corpo útil.
+ * Finalization has a detail that is not an error: the 409 is an EXPECTED
+ * result — it means the whole transaction was refused for lack of stock, and
+ * the response carries what was missing. That is why it does not use
+ * `apiSend`, which would treat any non-2xx as a failure with no useful body.
  */
 import { apiGet, apiSend } from "@/shared/ui/api-client";
 import type { Material } from "@/modules/catalog/domain";
 import type { ShortageDetail } from "@/modules/clinical/domain";
 
-// ── Finalização ────────────────────────────────────────────────────────────
+// ── Finalization ───────────────────────────────────────────────────────────
 
-/** Um procedimento e o que ele consome, como a tela monta. */
+/** A procedure and what it consumes, as the screen assembles it. */
 export interface FinalizeEntry {
   procedureId: string;
   materials: { materialId: string; quantity: number }[];
@@ -49,14 +49,14 @@ async function postFinalize(body: unknown): Promise<FinalizeOutcome> {
   }
 }
 
-/** Finaliza um procedimento avulso. */
+/** Finalizes a single procedure. */
 export const finalizeProcedure = (entry: FinalizeEntry) => postFinalize(entry);
 
-/** Finaliza a consulta inteira: uma transação para todos os procedimentos. */
+/** Finalizes the whole appointment: one transaction for every procedure. */
 export const finalizeSession = (entries: FinalizeEntry[]) =>
   postFinalize({ procedures: entries });
 
-// ── Histórico ──────────────────────────────────────────────────────────────
+// ── History ────────────────────────────────────────────────────────────────
 
 export interface ExecutionItemLine {
   id: string;
@@ -105,13 +105,13 @@ export async function listHistory(filters: {
   };
 }
 
-/** Devolve os materiais ao estoque e marca a execução como estornada. */
+/** Returns the materials to stock and marks the execution as reversed. */
 export const reverseExecution = (executionId: string) =>
   apiSend(`/api/history/${executionId}/reverse`, "POST");
 
 /**
- * Endereço do CSV. É um link de navegação, não um `fetch`: o download é feito
- * pelo próprio navegador, que cuida do nome do arquivo e do progresso.
+ * Address of the CSV. It is a navigation link, not a `fetch`: the browser
+ * performs the download, handling the file name and the progress itself.
  */
 export const historyExportUrl = (filters: { query: string; days: number }) =>
   `/api/history/export?q=${encodeURIComponent(filters.query)}&days=${filters.days}`;

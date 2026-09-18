@@ -1,37 +1,32 @@
 /**
- * Tipos transversais do núcleo compartilhado.
+ * Cross-cutting types of the shared core.
  *
- * `AuthenticatedActor` mora aqui, e não no módulo de identidade, porque é o
- * "quem está chamando" que atravessa todos os casos de uso — inclusive os de
- * conta, que ficam abaixo da identidade na ordem dos módulos.
- */
-
-/**
- * Modelo de domínio.
+ * `AuthenticatedActor` lives here, and not in the identity module, because
+ * "who is calling" cuts across every use case — including the account ones,
+ * which sit below identity in the module order.
  *
- * São tipos de negócio, não linhas de tabela: nenhum decorator de ORM, nenhum
- * import de Prisma. Os adaptadores de persistência mapeiam entre estes tipos e
- * o banco, o que permite trocar o ORM sem tocar em regra de negócio.
+ * These are domain models, not table rows: no ORM decorators, no Prisma
+ * imports. Persistence adapters map between these types and the database,
+ * which is what allows swapping the ORM without touching business rules.
  */
 
 export type Uuid = string;
 
 /**
- * Papéis.
+ * Roles.
  *
- * `OWNER` é o administrador da PLATAFORMA — quem opera o console de clínicas.
- * Dentro de uma clínica os papéis são `MEMBER` (acesso pleno) e `ASSISTANT`
- * (auxiliar/ASB: executa procedimento e repõe estoque, mas não altera o
- * catálogo nem enxerga custo).
+ * `OWNER` owns the clinic account. `MEMBER` has full access, and `ASSISTANT`
+ * (dental assistant) finalizes procedures and restocks materials, but cannot
+ * change the catalog nor see costs.
  */
 export type UserRole = "OWNER" | "MEMBER" | "ASSISTANT";
 
-/** Identidade autenticada que atravessa os casos de uso. */
+/** Authenticated identity threaded through the use cases. */
 export interface AuthenticatedActor {
   userId: Uuid;
   tenantId: Uuid;
   role: UserRole;
   email: string;
-  /** Assinatura das operações que registram autoria (baixa, ajuste, estorno). */
+  /** Signs operations that record authorship (consumption, adjustment, reversal). */
   name: string;
 }

@@ -1,8 +1,8 @@
 /**
- * Adaptador de entrada: /api/finalize
+ * Inbound adapter: /api/finalize
  *
- * A regra (material baixa, instrumental não) está na política de domínio; a
- * transação está no repositório. Aqui só se traduz HTTP.
+ * The rule (materials deduct, instruments do not) lives in the domain policy;
+ * the transaction lives in the repository. Here only HTTP is translated.
  */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
@@ -15,8 +15,8 @@ export const dynamic = "force-dynamic";
 export const POST = route("authenticated", async ({ req, actor }) => {
   const body = await readJsonBody(req);
 
-  // Aceita um procedimento (`procedureId` + `materials`) ou vários
-  // (`procedures`); a normalização fica no caso de uso.
+  // Accepts one procedure (`procedureId` + `materials`) or several
+  // (`procedures`); normalization belongs to the use case.
   const outcome = await container.clinical.finalizeProcedure.execute(actor, {
     procedureId: body.procedureId,
     materials: body.materials,
@@ -24,7 +24,7 @@ export const POST = route("authenticated", async ({ req, actor }) => {
   });
 
   if (!outcome.ok) {
-    // 409: o pedido é válido, mas conflita com o estoque atual.
+    // 409: the request is valid, but conflicts with current stock.
     return NextResponse.json(toShortageResponse(outcome.shortages), { status: 409 });
   }
 

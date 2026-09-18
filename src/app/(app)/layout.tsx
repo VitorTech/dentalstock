@@ -3,11 +3,12 @@ import { getSessionContext } from "@/server/auth";
 import TenantTheme from "@/modules/account/ui/TenantTheme";
 
 /**
- * Layout das telas internas.
+ * Layout of the internal screens.
  *
- * Cookie órfão (sessão expirada ou revogada) passa pela rota que limpa o
- * cookie antes de voltar ao login — ir direto para /login criaria laço, porque
- * o middleware só enxerga a PRESENÇA do cookie, não sua validade.
+ * An orphan cookie (expired or revoked session) goes through the route that
+ * clears the cookie before returning to login — going straight to /login would
+ * create a loop, because the middleware only sees that the cookie is PRESENT,
+ * not whether it is valid.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSessionContext();

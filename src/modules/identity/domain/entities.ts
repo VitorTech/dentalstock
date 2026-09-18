@@ -1,4 +1,4 @@
-/** Identidade: usuários da plataforma e suas credenciais. */
+/** Identity: platform users and their credentials. */
 import type { UserRole, Uuid } from "@/shared/domain";
 
 export interface User {
@@ -9,7 +9,7 @@ export interface User {
   role: UserRole;
 }
 
-/** Usuário com o hash da senha — só circula dentro do fluxo de autenticação. */
+/** User plus password hash — only circulates inside the authentication flow. */
 export interface UserCredentials extends User {
   passwordHash: string;
 }

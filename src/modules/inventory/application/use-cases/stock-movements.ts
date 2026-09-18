@@ -1,8 +1,8 @@
 /**
- * Casos de uso de movimentação: entrada, ajuste e extrato.
+ * Movement use cases: entry, adjustment and ledger listing.
  *
- * Regra que atravessa o arquivo: nenhuma alteração de saldo acontece sem
- * movimento correspondente.
+ * The rule running through this file: no balance ever changes without a
+ * matching movement.
  */
 import type { MaterialRepository } from "@/modules/catalog/application";
 import type { Material } from "@/modules/catalog/domain";
@@ -12,11 +12,11 @@ import { type AuthenticatedActor, Money, NonEmptyText, NotFoundError, Quantity, 
 import type { StockMovementRepository } from "../ports";
 
 /**
- * Entrada de material (compra/reposição).
+ * Material entry (purchase/restock).
  *
- * Quando a nota traz um preço, o custo do material é recalculado por média
- * ponderada em vez de simplesmente substituído — a decisão e o porquê estão em
- * `weightedAverageCost`.
+ * When the invoice carries a price, the material's cost is recomputed as a
+ * weighted average instead of simply replaced — the decision and the reasoning
+ * live in `weightedAverageCost`.
  */
 export class RegisterStockEntryUseCase {
   constructor(
@@ -30,10 +30,10 @@ export class RegisterStockEntryUseCase {
   ): Promise<Material> {
     const materialId = String(input.materialId ?? "");
     const quantity = Quantity.create(input.quantity);
-    // Informar preço é privilégio de quem enxerga custo. O valor enviado por
-    // outro papel é IGNORADO, não recusado: dar entrada no que chegou é trabalho
-    // legítimo do auxiliar, e não deve falhar por causa de um campo a mais.
-    // Antes esta regra vivia na rota HTTP; aqui ela vale para qualquer entrada.
+    // Entering a price is a privilege of whoever can see costs. A value sent by
+    // another role is IGNORED, not rejected: receiving what arrived is
+    // legitimate assistant work and must not fail over one extra field. This
+    // rule used to live in the HTTP route; here it holds for every entry.
     const unitCost = canSeeCosts(actor.role) ? Money.optional(input.unitCost) : null;
     const note = NonEmptyText.optional(input.note, "observação", 300);
 
@@ -65,12 +65,12 @@ export class RegisterStockEntryUseCase {
 }
 
 /**
- * Ajuste manual do saldo.
+ * Manual balance adjustment.
  *
- * A tela informa o saldo que deveria estar lá (é assim que a pessoa pensa: "na
- * verdade tem 12"), e aqui se converte para a diferença. O motivo é
- * obrigatório: ajuste sem justificativa é justamente o registro que não explica
- * nada quando o estoque não fecha.
+ * The screen takes the balance that should be there (that is how people think:
+ * "there are actually 12"), and here it is converted into the difference. The
+ * reason is mandatory: an adjustment without justification is exactly the
+ * record that explains nothing when stock does not add up.
  */
 export class AdjustStockUseCase {
   constructor(

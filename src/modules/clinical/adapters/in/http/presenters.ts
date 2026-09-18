@@ -1,8 +1,8 @@
 /**
- * Contrato HTTP do atendimento.
+ * Clinical HTTP contract.
  *
- * Concentra a decisão de ocultar custo para quem não pode vê-lo — antes
- * repetida em cada rota que devolvia valores.
+ * Concentrates the decision to hide cost from whoever may not see it — it used
+ * to be repeated in every route that returned amounts.
  */
 import type { Material } from "@/modules/catalog/domain";
 import type { ExportRow, FinalizeOutcome } from "@/modules/clinical/application";
@@ -11,7 +11,7 @@ import { canSeeCosts } from "@/modules/identity/domain";
 import type { AuthenticatedActor } from "@/shared/domain";
 import { toCsv } from "@/shared/infrastructure/http/csv";
 
-/** 409 da finalização: o pedido é válido, mas conflita com o estoque atual. */
+/** Finalize 409: the request is valid, but conflicts with current stock. */
 export function toShortageResponse(shortages: ShortageDetail[]) {
   return {
     error: "Estoque insuficiente para um ou mais materiais.",
@@ -26,7 +26,7 @@ export function toFinalizedResponse(
 ) {
   return {
     ok: true,
-    // A interface recarrega os materiais após finalizar.
+    // The interface reloads the materials after finalizing.
     materials,
     cost: canSeeCosts(actor.role) ? outcome.cost : null,
     procedures: outcome.procedures,
@@ -55,11 +55,11 @@ const fmtDate = (date: Date) =>
     minute: "2-digit",
   });
 
-// Decimal com vírgula: é o que o Excel em português reconhece como número.
+// Comma decimals: that is what Excel in pt-BR recognizes as a number.
 const fmtNumber = (value: number | null) =>
   value === null ? "" : String(value).replace(".", ",");
 
-/** Histórico em planilha — uma linha por item, colunas de custo só para quem pode vê-las. */
+/** History as a spreadsheet — one row per item, cost columns only for those allowed. */
 export function toHistoryCsv(rows: ExportRow[], actor: AuthenticatedActor, now: Date) {
   const showCosts = canSeeCosts(actor.role);
 

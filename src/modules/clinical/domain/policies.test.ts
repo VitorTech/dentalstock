@@ -4,7 +4,7 @@ import { BusinessRuleError } from "@/shared/domain";
 import type { ProcedureExecution } from "./entities";
 import { planConsumption, planReversal, summarizeCost } from "./policies";
 
-const AGORA = new Date("2026-09-14T12:00:00.000Z");
+const NOW = new Date("2026-09-14T12:00:00.000Z");
 
 function material(over: Partial<Material> = {}): Material {
   return {
@@ -24,7 +24,7 @@ function material(over: Partial<Material> = {}): Material {
   };
 }
 
-function procedimento(over: Partial<Procedure> = {}): Procedure {
+function procedure(over: Partial<Procedure> = {}): Procedure {
   return {
     id: "p1",
     tenantId: "t1",
@@ -43,7 +43,7 @@ function execucao(over: Partial<ProcedureExecution> = {}): ProcedureExecution {
     procedureId: "p1",
     procedureName: "Restauração",
     category: "Dentística",
-    createdAt: AGORA,
+    createdAt: NOW,
     items: [],
     userName: "Dra. Marina",
     sessionId: null,
@@ -55,7 +55,7 @@ function execucao(over: Partial<ProcedureExecution> = {}): ProcedureExecution {
 }
 
 describe("summarizeCost", () => {
-  it("ignora instrumental — ele volta para a bancada", () => {
+  it("ignores instruments — they go back to the bench", () => {
     const r = summarizeCost([
       { kind: "MATERIAL", quantity: 2, unitCost: 2.5 },
       { kind: "INSTRUMENT", quantity: 1, unitCost: 300 },
@@ -64,7 +64,7 @@ describe("summarizeCost", () => {
     expect(r.counted).toBe(1);
   });
 
-  it("conta os materiais sem preço para a tela avisar que o total é parcial", () => {
+  it("counts unpriced materials so the screen can say the total is partial", () => {
     const r = summarizeCost([
       { kind: "MATERIAL", quantity: 2, unitCost: 2.5 },
       { kind: "MATERIAL", quantity: 1, unitCost: null },
@@ -74,15 +74,15 @@ describe("summarizeCost", () => {
     expect(r.counted).toBe(2);
   });
 
-  it("lista vazia não quebra", () => {
+  it("an empty list does not break", () => {
     expect(summarizeCost([])).toEqual({ total: 0, missing: 0, counted: 0 });
   });
 });
 
 describe("planConsumption", () => {
-  it("baixa material e registra instrumental sem consumi-lo", () => {
+  it("deducts materials and records instruments without consuming them", () => {
     const luva = material({ id: "luva", name: "Luva", unit: "par", stock: 10, unitCost: 2 });
-    const proc = procedimento({
+    const proc = procedure({
       instruments: [
         {
           id: "pi1",
@@ -109,15 +109,15 @@ describe("planConsumption", () => {
 
     const instrumental = plan.historyItems.find((i) => i.kind === "INSTRUMENT");
     expect(instrumental).toBeDefined();
-    // Instrumental entra no histórico mas NUNCA na lista de baixas.
+    // Instruments enter history but NEVER the deduction list.
     expect(plan.deductions.some((d) => d.materialId === "i1")).toBe(false);
     expect(instrumental?.unitCost).toBeNull();
   });
 
-  it("acusa falta e não devolve nenhuma baixa parcial", () => {
+  it("flags the shortage and returns no partial deduction", () => {
     const m = material({ id: "m1", stock: 1 });
     const { plan, shortages } = planConsumption(
-      procedimento(),
+      procedure(),
       [{ materialId: "m1", quantity: 5 }],
       [m]
     );
@@ -129,12 +129,12 @@ describe("planConsumption", () => {
     expect(plan.historyItems).toHaveLength(0);
   });
 
-  it("uma falta entre vários itens anula o plano inteiro", () => {
+  it("one shortage among several items voids the whole plan", () => {
     const ok = material({ id: "ok", stock: 100 });
     const falta = material({ id: "falta", stock: 0 });
 
     const { plan, shortages } = planConsumption(
-      procedimento(),
+      procedure(),
       [
         { materialId: "ok", quantity: 1 },
         { materialId: "falta", quantity: 1 },
@@ -146,21 +146,21 @@ describe("planConsumption", () => {
     expect(plan.deductions).toHaveLength(0);
   });
 
-  it("consumir exatamente o saldo é permitido", () => {
+  it("consuming exactly the balance is allowed", () => {
     const m = material({ id: "m1", stock: 3 });
-    const { shortages } = planConsumption(procedimento(), [{ materialId: "m1", quantity: 3 }], [m]);
+    const { shortages } = planConsumption(procedure(), [{ materialId: "m1", quantity: 3 }], [m]);
     expect(shortages).toHaveLength(0);
   });
 
-  it("material fora da clínica é recusado como regra de negócio", () => {
+  it("a material outside the clinic is rejected as a business rule", () => {
     expect(() =>
-      planConsumption(procedimento(), [{ materialId: "de-outra-clinica", quantity: 1 }], [])
+      planConsumption(procedure(), [{ materialId: "de-outra-clinica", quantity: 1 }], [])
     ).toThrow(BusinessRuleError);
   });
 
-  it("congela o custo unitário do dia no item de histórico", () => {
+  it("freezes the day's unit cost into the history item", () => {
     const m = material({ id: "m1", stock: 10, unitCost: 2.5 });
-    const { plan } = planConsumption(procedimento(), [{ materialId: "m1", quantity: 2 }], [m]);
+    const { plan } = planConsumption(procedure(), [{ materialId: "m1", quantity: 2 }], [m]);
 
     expect(plan.historyItems[0].unitCost).toBe(2.5);
     expect(plan.historyItems[0].materialId).toBe("m1");
@@ -169,7 +169,7 @@ describe("planConsumption", () => {
 });
 
 describe("planReversal", () => {
-  it("devolve apenas materiais, nunca instrumental", () => {
+  it("returns only materials, never instruments", () => {
     const e = execucao({
       items: [
         { id: "1", kind: "MATERIAL", name: "Luva", quantity: 2, unit: "par", materialId: "luva", unitCost: 2 },
@@ -180,9 +180,9 @@ describe("planReversal", () => {
     expect(planReversal(e).returns).toEqual([{ materialId: "luva", quantity: 2 }]);
   });
 
-  it("recusa estorno duplicado", () => {
+  it("refuses a duplicate reversal", () => {
     const e = execucao({
-      reversedAt: AGORA,
+      reversedAt: NOW,
       items: [
         { id: "1", kind: "MATERIAL", name: "Luva", quantity: 1, unit: "par", materialId: "luva", unitCost: null },
       ],
@@ -190,7 +190,7 @@ describe("planReversal", () => {
     expect(() => planReversal(e)).toThrow(BusinessRuleError);
   });
 
-  it("ignora item cujo material foi excluído do catálogo", () => {
+  it("skips an item whose material was deleted from the catalog", () => {
     const e = execucao({
       items: [
         { id: "1", kind: "MATERIAL", name: "Vivo", quantity: 1, unit: "un", materialId: "vivo", unitCost: null },
@@ -200,7 +200,7 @@ describe("planReversal", () => {
     expect(planReversal(e).returns).toEqual([{ materialId: "vivo", quantity: 1 }]);
   });
 
-  it("recusa quando não há nada para devolver", () => {
+  it("refuses when there is nothing to return", () => {
     const e = execucao({
       items: [
         { id: "1", kind: "INSTRUMENT", name: "Espelho", quantity: 1, unit: "un", materialId: null, unitCost: null },

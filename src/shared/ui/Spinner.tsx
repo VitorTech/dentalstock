@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 
-/** Indicador de carregamento padrão do sistema. */
+/** The system's standard loading indicator. */
 export default function Spinner({
   size = 15,
   className = "",

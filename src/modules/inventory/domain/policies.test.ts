@@ -10,9 +10,9 @@ import {
   weightedAverageCost,
 } from "./policies";
 
-const DIA = 24 * 60 * 60 * 1000;
+const DAY = 24 * 60 * 60 * 1000;
 
-const AGORA = new Date("2026-09-14T12:00:00.000Z");
+const NOW = new Date("2026-09-14T12:00:00.000Z");
 
 function material(over: Partial<Material> = {}): Material {
   return {
@@ -32,51 +32,51 @@ function material(over: Partial<Material> = {}): Material {
   };
 }
 
-describe("validade", () => {
-  it("aceita a data como texto ISO, como chega à interface via JSON", () => {
-    const iso = { expiresAt: new Date(AGORA.getTime() + 10 * DIA).toISOString() };
-    expect(isExpiringSoon(iso, AGORA)).toBe(true);
-    expect(daysUntilExpiry(iso, AGORA)).toBe(10);
+describe("expiry", () => {
+  it("accepts the date as ISO text, the way the client receives it over JSON", () => {
+    const iso = { expiresAt: new Date(NOW.getTime() + 10 * DAY).toISOString() };
+    expect(isExpiringSoon(iso, NOW)).toBe(true);
+    expect(daysUntilExpiry(iso, NOW)).toBe(10);
   });
 
-  it("atenção à validade cobre vencido e prestes a vencer", () => {
-    expect(needsExpiryAttention({ expiresAt: new Date(AGORA.getTime() - DIA) }, AGORA)).toBe(true);
-    expect(needsExpiryAttention({ expiresAt: new Date(AGORA.getTime() + 5 * DIA) }, AGORA)).toBe(true);
-    expect(needsExpiryAttention({ expiresAt: null }, AGORA)).toBe(false);
+  it("expiry attention covers both expired and about to expire", () => {
+    expect(needsExpiryAttention({ expiresAt: new Date(NOW.getTime() - DAY) }, NOW)).toBe(true);
+    expect(needsExpiryAttention({ expiresAt: new Date(NOW.getTime() + 5 * DAY) }, NOW)).toBe(true);
+    expect(needsExpiryAttention({ expiresAt: null }, NOW)).toBe(false);
   });
 
-  it("material sem validade nunca alerta", () => {
+  it("a material without an expiry date never warns", () => {
     const m = material({ expiresAt: null });
-    expect(isExpired(m, AGORA)).toBe(false);
-    expect(isExpiringSoon(m, AGORA)).toBe(false);
-    expect(daysUntilExpiry(m, AGORA)).toBeNull();
+    expect(isExpired(m, NOW)).toBe(false);
+    expect(isExpiringSoon(m, NOW)).toBe(false);
+    expect(daysUntilExpiry(m, NOW)).toBeNull();
   });
 
-  it("vencido e 'vence em breve' são estados exclusivos", () => {
-    const vencido = material({ expiresAt: new Date(AGORA.getTime() - DIA) });
-    expect(isExpired(vencido, AGORA)).toBe(true);
-    expect(isExpiringSoon(vencido, AGORA)).toBe(false);
+  it("expired and 'expiring soon' are exclusive states", () => {
+    const vencido = material({ expiresAt: new Date(NOW.getTime() - DAY) });
+    expect(isExpired(vencido, NOW)).toBe(true);
+    expect(isExpiringSoon(vencido, NOW)).toBe(false);
 
-    const breve = material({ expiresAt: new Date(AGORA.getTime() + 10 * DIA) });
-    expect(isExpired(breve, AGORA)).toBe(false);
-    expect(isExpiringSoon(breve, AGORA)).toBe(true);
+    const breve = material({ expiresAt: new Date(NOW.getTime() + 10 * DAY) });
+    expect(isExpired(breve, NOW)).toBe(false);
+    expect(isExpiringSoon(breve, NOW)).toBe(true);
   });
 
-  it("fora da janela de alerta não avisa", () => {
+  it("outside the warning window it stays quiet", () => {
     const longe = material({
-      expiresAt: new Date(AGORA.getTime() + (EXPIRY_WARNING_DAYS + 1) * DIA),
+      expiresAt: new Date(NOW.getTime() + (EXPIRY_WARNING_DAYS + 1) * DAY),
     });
-    expect(isExpiringSoon(longe, AGORA)).toBe(false);
+    expect(isExpiringSoon(longe, NOW)).toBe(false);
   });
 
-  it("dias até vencer é negativo para o que já venceu", () => {
-    const m = material({ expiresAt: new Date(AGORA.getTime() - 3 * DIA) });
-    expect(daysUntilExpiry(m, AGORA)).toBe(-3);
+  it("days until expiry is negative for what already expired", () => {
+    const m = material({ expiresAt: new Date(NOW.getTime() - 3 * DAY) });
+    expect(daysUntilExpiry(m, NOW)).toBe(-3);
   });
 });
 
 describe("weightedAverageCost", () => {
-  it("sem custo anterior, adota integralmente o custo da entrada", () => {
+  it("with no previous cost, it adopts the incoming cost in full", () => {
     expect(
       weightedAverageCost({
         currentStock: 40,
@@ -87,7 +87,7 @@ describe("weightedAverageCost", () => {
     ).toBe(4.5);
   });
 
-  it("pondera pelo saldo existente", () => {
+  it("weights by the existing balance", () => {
     // 10 a R$ 2,00 + 10 a R$ 4,00 → R$ 3,00
     expect(
       weightedAverageCost({
@@ -99,7 +99,7 @@ describe("weightedAverageCost", () => {
     ).toBe(3);
   });
 
-  it("estoque zerado adota o custo novo, sem dividir por zero", () => {
+  it("zero stock adopts the new cost, without dividing by zero", () => {
     expect(
       weightedAverageCost({
         currentStock: 0,
@@ -110,7 +110,7 @@ describe("weightedAverageCost", () => {
     ).toBe(2);
   });
 
-  it("estoque negativo não produz custo negativo", () => {
+  it("negative stock does not produce a negative cost", () => {
     expect(
       weightedAverageCost({
         currentStock: -5,
@@ -121,7 +121,7 @@ describe("weightedAverageCost", () => {
     ).toBe(2);
   });
 
-  it("arredonda o resultado para centavos", () => {
+  it("rounds the result to cents", () => {
     const r = weightedAverageCost({
       currentStock: 3,
       currentCost: 1.11,

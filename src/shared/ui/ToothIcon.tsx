@@ -1,6 +1,6 @@
-/** Ícone de dente desenhado à mão (o lucide-react não tem um).
- * Segue as convenções visuais do lucide: viewBox 24, traço em currentColor,
- * pontas arredondadas — assim combina com os demais ícones do sistema. */
+/** Hand-drawn tooth icon (lucide-react does not ship one).
+ * Follows lucide's visual conventions: viewBox 24, currentColor stroke, round
+ * caps — so it sits well next to the other icons in the system. */
 export default function ToothIcon({
   size = 24,
   strokeWidth = 1.8,

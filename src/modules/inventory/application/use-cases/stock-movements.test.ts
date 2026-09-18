@@ -1,8 +1,8 @@
 /**
- * Testes da entrada de estoque.
+ * Stock entry tests.
  *
- * Como em `executions.test.ts`, as portas são implementadas em memória e o
- * teste confere o que foi GRAVADO — aqui, principalmente, se o custo entrou.
+ * As in `executions.test.ts`, the ports are implemented in memory and the test
+ * checks what was RECORDED — here, mainly, whether the cost came through.
  */
 import { describe, expect, it } from "vitest";
 import type { MaterialRepository } from "@/modules/catalog/application";
@@ -15,7 +15,7 @@ const TENANT = "clinica-1";
 
 type RegisterInput = Parameters<StockMovementRepository["register"]>[0];
 
-function ator(role: AuthenticatedActor["role"]): AuthenticatedActor {
+function actor(role: AuthenticatedActor["role"]): AuthenticatedActor {
   return { userId: "u1", tenantId: TENANT, role, email: "equipe@clinica.com", name: "Equipe" };
 }
 
@@ -37,21 +37,21 @@ function material(over: Partial<Material> = {}): Material {
   };
 }
 
-class MaterialsEmMemoria implements Partial<MaterialRepository> {
-  constructor(private readonly itens: Material[]) {}
+class InMemoryMaterials implements Partial<MaterialRepository> {
+  constructor(private readonly items: Material[]) {}
 
   async findById(tenantId: Uuid, id: Uuid): Promise<Material | null> {
-    return this.itens.find((m) => m.id === id && m.tenantId === tenantId) ?? null;
+    return this.items.find((m) => m.id === id && m.tenantId === tenantId) ?? null;
   }
 }
 
-class MovementsEmMemoria implements Partial<StockMovementRepository> {
-  readonly gravados: RegisterInput[] = [];
+class InMemoryMovements implements Partial<StockMovementRepository> {
+  readonly recorded: RegisterInput[] = [];
 
   constructor(private readonly base: Material) {}
 
   async register(input: RegisterInput): Promise<Material> {
-    this.gravados.push(input);
+    this.recorded.push(input);
     return {
       ...this.base,
       stock: this.base.stock + input.quantity,
@@ -60,78 +60,78 @@ class MovementsEmMemoria implements Partial<StockMovementRepository> {
   }
 }
 
-function montar(base = material()) {
-  const movements = new MovementsEmMemoria(base);
+function build(base = material()) {
+  const movements = new InMemoryMovements(base);
   const useCase = new RegisterStockEntryUseCase(
-    new MaterialsEmMemoria([base]) as unknown as MaterialRepository,
+    new InMemoryMaterials([base]) as unknown as MaterialRepository,
     movements as unknown as StockMovementRepository
   );
   return { useCase, movements };
 }
 
 describe("RegisterStockEntryUseCase", () => {
-  it("quem vê custo recalcula o custo médio ponderado", async () => {
-    const { useCase, movements } = montar();
+  it("whoever sees costs recomputes the weighted average", async () => {
+    const { useCase, movements } = build();
 
-    const atualizado = await useCase.execute(ator("MEMBER"), {
+    const atualizado = await useCase.execute(actor("MEMBER"), {
       materialId: "m1",
       quantity: 10,
       unitCost: 4,
     });
 
-    expect(movements.gravados[0]).toMatchObject({ type: "RESTOCK", quantity: 10, unitCost: 4 });
-    // 10 g a R$ 2 + 10 g a R$ 4 = média de R$ 3.
-    expect(movements.gravados[0].newMaterialCost).toBe(3);
+    expect(movements.recorded[0]).toMatchObject({ type: "RESTOCK", quantity: 10, unitCost: 4 });
+    // 10 g at R$ 2 + 10 g at R$ 4 = an average of R$ 3.
+    expect(movements.recorded[0].newMaterialCost).toBe(3);
     expect(atualizado.unitCost).toBe(3);
   });
 
-  it("auxiliar dá entrada normalmente, mas o preço enviado é ignorado", async () => {
-    const { useCase, movements } = montar();
+  it("the assistant registers the entry, but the sent price is ignored", async () => {
+    const { useCase, movements } = build();
 
-    const atualizado = await useCase.execute(ator("ASSISTANT"), {
+    const atualizado = await useCase.execute(actor("ASSISTANT"), {
       materialId: "m1",
       quantity: 5,
       unitCost: 999,
     });
 
-    expect(movements.gravados).toHaveLength(1);
-    expect(movements.gravados[0].quantity).toBe(5);
-    expect(movements.gravados[0].unitCost).toBeNull();
-    expect(movements.gravados[0].newMaterialCost).toBeUndefined();
+    expect(movements.recorded).toHaveLength(1);
+    expect(movements.recorded[0].quantity).toBe(5);
+    expect(movements.recorded[0].unitCost).toBeNull();
+    expect(movements.recorded[0].newMaterialCost).toBeUndefined();
     expect(atualizado.unitCost).toBe(2);
   });
 
-  it("auxiliar com preço inválido não falha: o campo nem é lido", async () => {
-    const { useCase, movements } = montar();
+  it("an assistant with an invalid price does not fail: the field is never read", async () => {
+    const { useCase, movements } = build();
 
-    await useCase.execute(ator("ASSISTANT"), { materialId: "m1", quantity: 1, unitCost: "abc" });
+    await useCase.execute(actor("ASSISTANT"), { materialId: "m1", quantity: 1, unitCost: "abc" });
 
-    expect(movements.gravados[0].unitCost).toBeNull();
+    expect(movements.recorded[0].unitCost).toBeNull();
   });
 
-  it("registra autor e observação no movimento", async () => {
-    const { useCase, movements } = montar();
+  it("records author and note on the movement", async () => {
+    const { useCase, movements } = build();
 
-    await useCase.execute(ator("MEMBER"), { materialId: "m1", quantity: 1, note: "  NF 123  " });
+    await useCase.execute(actor("MEMBER"), { materialId: "m1", quantity: 1, note: "  NF 123  " });
 
-    expect(movements.gravados[0]).toMatchObject({ userId: "u1", userName: "Equipe", note: "NF 123" });
+    expect(movements.recorded[0]).toMatchObject({ userId: "u1", userName: "Equipe", note: "NF 123" });
   });
 
-  it("recusa quantidade inválida antes de gravar", async () => {
-    const { useCase, movements } = montar();
+  it("rejects an invalid quantity before writing", async () => {
+    const { useCase, movements } = build();
 
     await expect(
-      useCase.execute(ator("MEMBER"), { materialId: "m1", quantity: 0 })
+      useCase.execute(actor("MEMBER"), { materialId: "m1", quantity: 0 })
     ).rejects.toBeInstanceOf(ValidationError);
-    expect(movements.gravados).toHaveLength(0);
+    expect(movements.recorded).toHaveLength(0);
   });
 
-  it("material de outra clínica não existe", async () => {
-    const { useCase, movements } = montar(material({ tenantId: "clinica-2" }));
+  it("a material from another clinic does not exist", async () => {
+    const { useCase, movements } = build(material({ tenantId: "clinica-2" }));
 
     await expect(
-      useCase.execute(ator("MEMBER"), { materialId: "m1", quantity: 1 })
+      useCase.execute(actor("MEMBER"), { materialId: "m1", quantity: 1 })
     ).rejects.toBeInstanceOf(NotFoundError);
-    expect(movements.gravados).toHaveLength(0);
+    expect(movements.recorded).toHaveLength(0);
   });
 });

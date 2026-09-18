@@ -106,7 +106,7 @@ export default function SupplierRow({
         </button>
       </div>
 
-      {/* Materiais vinculados */}
+      {/* Linked materials */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[12px] font-medium text-subink">
@@ -155,7 +155,7 @@ export default function SupplierRow({
           </button>
         </div>
 
-        {/* Seletor de materiais */}
+        {/* Material picker */}
         {showPicker && (
           <div className="mt-1 rounded-xl border border-hairline bg-surface p-3">
             <input

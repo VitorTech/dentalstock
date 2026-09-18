@@ -1,7 +1,7 @@
-/** Contrato HTTP da conta: preferências da clínica. */
+/** Account HTTP contract: the clinic's preferences. */
 import type { Tenant } from "@/modules/account/domain";
 
-/** Allowlist explícita: a resposta carrega só o que a tela precisa. */
+/** Explicit allowlist: the response carries only what the screen needs. */
 export function toTenantSettingsResponse(tenant: Tenant) {
   return {
     id: tenant.id,

@@ -1,51 +1,51 @@
 /**
- * Política de limite de tentativas de login (OWASP A07 — falhas de
- * identificação e autenticação).
+ * Login attempt limiting policy (OWASP A07 — identification and
+ * authentication failures).
  *
- * É uma função pura sobre um contador: a decisão de bloquear não depende de
- * banco, relógio do sistema nem HTTP, e por isso é testável direto.
+ * It is a pure function over a counter: the decision to block depends on no
+ * database, no system clock and no HTTP, which makes it directly testable.
  *
- * Duas chaves são contadas em paralelo, porque protegem de ataques diferentes:
+ * Two keys are counted in parallel, because they stop different attacks:
  *
- *  - por CONTA: impede força bruta contra a senha de um usuário específico,
- *    mesmo que o atacante troque de IP a cada tentativa;
- *  - por ORIGEM (IP): impede varredura de senha comum ("password spraying")
- *    contra muitas contas, caso em que nenhuma conta sozinha chega ao limite.
+ *  - per ACCOUNT: blocks brute force against one user's password, even when
+ *    the attacker rotates IPs on every attempt;
+ *  - per ORIGIN (IP): blocks password spraying across many accounts, where no
+ *    single account ever reaches its own limit.
  *
- * Os limites são diferentes de propósito. O da conta é o mais delicado: um
- * limite muito baixo transforma o mecanismo em negação de serviço contra o
- * usuário legítimo — basta o atacante errar a senha de propósito para trancar
- * a recepção da clínica. Por isso o bloqueio é curto e a contagem zera no
- * primeiro acerto, em vez de exigir intervenção de um administrador.
+ * The two limits differ on purpose. The account one is the delicate one: too
+ * low a threshold turns the mechanism into a denial of service against the
+ * legitimate user — an attacker only has to fail on purpose to lock the
+ * clinic's front desk out. Hence a short block that clears itself, and a
+ * counter that resets on the first success, instead of requiring an admin.
  */
 
-/** Janela em que as falhas se acumulam. Falha isolada e antiga não conta. */
+/** Window in which failures accumulate. An old, isolated failure does not count. */
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
-/** Quanto tempo o acesso fica bloqueado depois de estourar o limite. */
+/** How long access stays blocked once the limit is hit. */
 export const LOGIN_BLOCK_MS = 15 * 60 * 1000;
 
-/** Falhas toleradas para a mesma conta antes do bloqueio. */
+/** Failures tolerated for the same account before blocking. */
 export const LOGIN_MAX_FAILURES_PER_ACCOUNT = 10;
 
 /**
- * Falhas toleradas para o mesmo IP. Mais alto que o da conta porque uma
- * clínica inteira costuma sair por um único endereço.
+ * Failures tolerated for the same IP. Higher than the account limit because a
+ * whole clinic usually shares one address.
  */
 export const LOGIN_MAX_FAILURES_PER_IP = 30;
 
-/** Contador persistido de uma chave (conta ou IP). */
+/** Persisted counter for one key (account or IP). */
 export interface LoginAttemptState {
   failures: number;
-  /** Início da janela corrente. */
+  /** Start of the current window. */
   firstFailureAt: Date;
   blockedUntil: Date | null;
 }
 
 /**
- * Segundos que ainda faltam para liberar; `0` quando não está bloqueado.
+ * Seconds left until release; `0` when not blocked.
  *
- * Arredonda para cima para nunca prometer liberação antes da hora.
+ * Rounds up so it never promises release earlier than it happens.
  */
 export function secondsUntilUnblocked(
   state: LoginAttemptState | null,
@@ -57,19 +57,19 @@ export function secondsUntilUnblocked(
 }
 
 /**
- * Próximo estado depois de uma tentativa falha.
+ * Next state after a failed attempt.
  *
- * Janela expirada recomeça a contagem: quem errou a senha uma vez ontem não
- * carrega isso para sempre.
+ * An expired window restarts the count: someone who mistyped a password once
+ * yesterday does not carry it forever.
  */
 export function afterFailedAttempt(
   state: LoginAttemptState | null,
   now: Date,
   maxFailures: number
 ): LoginAttemptState {
-  // Já bloqueado: o contador não anda. Somar aqui deixaria o prazo sempre à
-  // frente do relógio, e quem errasse a senha durante o bloqueio jamais sairia
-  // dele — inclusive o usuário legítimo tentando de novo.
+  // Already blocked: the counter stops. Adding here would keep the deadline
+  // permanently ahead of the clock, and whoever mistyped during the block
+  // would never get out of it — including the legitimate user retrying.
   if (secondsUntilUnblocked(state, now) > 0) return state as LoginAttemptState;
 
   const expired =
@@ -85,7 +85,7 @@ export function afterFailedAttempt(
   };
 }
 
-/** Mensagem única para qualquer chave: não revela se foi a conta ou o IP. */
+/** One message for either key: it never reveals whether it was account or IP. */
 export function tooManyAttemptsMessage(retryAfterSeconds: number): string {
   const minutes = Math.ceil(retryAfterSeconds / 60);
   return `Muitas tentativas de login. Tente novamente em ${minutes} ${

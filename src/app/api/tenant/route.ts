@@ -1,4 +1,4 @@
-/** Adaptador de entrada: /api/tenant — preferências de tema da clínica. */
+/** Inbound adapter: /api/tenant — the clinic's theme preferences. */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";

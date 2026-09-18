@@ -1,14 +1,14 @@
 /**
- * Contrato HTTP de identidade.
+ * Identity HTTP contract.
  *
- * Presenters são allowlists: só sai o que está escrito aqui. Hash de senha e
- * campos internos não têm caminho até a resposta, nem se forem adicionados às
- * entidades depois.
+ * Presenters are allowlists: only what is written here leaves the server. The
+ * password hash and internal fields have no path to the response, not even if
+ * they are later added to the entities.
  */
 import type { CurrentSession } from "@/modules/identity/application";
 import type { User } from "@/modules/identity/domain";
 
-/** Usuário como aparece na equipe da clínica e no console da plataforma. */
+/** A user as shown in the clinic's team screen. */
 export function toUserResponse(user: User) {
   return {
     id: user.id,
@@ -18,7 +18,7 @@ export function toUserResponse(user: User) {
   };
 }
 
-/** Identidade e tema da clínica para a interface — nada de cobrança. */
+/** Identity and clinic theme for the interface. */
 export function toSessionResponse(session: CurrentSession) {
   const { user, tenant } = session;
   return {

@@ -1,19 +1,19 @@
 "use client";
 
 /**
- * Operações de estoque disponíveis às telas: extrato, entradas, ajustes,
- * lista de compras e balanço.
+ * Inventory operations available to the screens: ledger, entries and
+ * adjustments.
  *
- * Os tipos aqui são o CONTRATO DE FIO — o que a API devolve em JSON, não a
- * entidade do domínio. A diferença não é burocracia: pelo fio, data vira texto
- * e o custo vem nulo para quem não pode vê-lo. Declarar isso evita a tela
- * acreditar que tem um `Date` onde tem uma string.
+ * The types here are the WIRE CONTRACT — what the API returns as JSON, not the
+ * domain entity. The difference is not bureaucracy: over the wire a date is
+ * text, and cost arrives null for whoever may not see it. Declaring that keeps
+ * the screen from believing it holds a `Date` where it holds a string.
  */
 import { apiGet, apiSend } from "@/shared/ui/api-client";
 import type { Material } from "@/modules/catalog/domain";
 import type { StockMovementType } from "@/modules/inventory/domain";
 
-// ── Extrato ────────────────────────────────────────────────────────────────
+// ── Ledger ─────────────────────────────────────────────────────────────────
 
 export interface StockMovementView {
   id: string;
@@ -23,7 +23,7 @@ export interface StockMovementView {
   quantity: number;
   type: StockMovementType;
   note: string | null;
-  /** Nulo para quem não pode ver custos — removido já no servidor. */
+  /** Null for whoever may not see costs — stripped on the server. */
   unitCost: number | null;
   userName: string | null;
   createdAt: string;
@@ -56,9 +56,9 @@ export async function listMovements(filters: {
   };
 }
 
-// ── Entrada e ajuste ───────────────────────────────────────────────────────
+// ── Entry and adjustment ───────────────────────────────────────────────────
 
-/** Devolve o material com saldo (e custo médio) já atualizados. */
+/** Returns the material with balance (and average cost) already updated. */
 export const registerEntry = (input: {
   materialId: string;
   quantity: number;
@@ -66,6 +66,6 @@ export const registerEntry = (input: {
   note?: string;
 }) => apiSend<Material>("/api/stock/entry", "POST", input);
 
-/** Correção manual de saldo: o motivo é obrigatório e vai para o extrato. */
+/** Manual balance correction: the reason is required and lands in the ledger. */
 export const adjustStock = (input: { materialId: string; stock: number; reason: string }) =>
   apiSend<Material>("/api/stock/adjust", "POST", input);

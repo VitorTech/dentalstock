@@ -1,9 +1,9 @@
 /**
- * Conta: a clínica (tenant) e suas preferências.
+ * Account: the clinic (tenant) and its preferences.
  *
- * Todo dado do sistema pertence a uma clínica. O identificador dela viaja em
- * toda porta de repositório — é assim que o isolamento entre clientes deixa de
- * depender da memória de quem escreve a consulta.
+ * Every piece of data in the system belongs to a clinic. Its identifier
+ * travels through every repository port — that is how isolation between
+ * customers stops depending on the memory of whoever writes the query.
  */
 import type { Uuid } from "@/shared/domain";
 

@@ -8,12 +8,12 @@ import ToothIcon from "@/shared/ui/ToothIcon";
 import { useMe } from "@/modules/identity/ui/use-me";
 
 /**
- * Cabeçalho compartilhado por todas as telas internas.
+ * Header shared by every internal screen.
  *
- * Deliberadamente enxuto: botão de menu à esquerda, marca da clínica (→ início)
- * e o `children` opcional (ex.: indicador de estoque em baixa). Toda a
- * navegação mora na gaveta lateral — com onze destinos, um menu suspenso
- * ancorado no cabeçalho passou a cobrir metade da tela.
+ * Deliberately lean: menu button on the left, the clinic's brand (→ home) and
+ * the optional `children` (e.g. the low-stock indicator). All navigation lives
+ * in the side drawer — as a header-anchored dropdown, the list grew until it
+ * covered half the screen.
  */
 export default function SiteHeader({
   maxWidth = "max-w-3xl",

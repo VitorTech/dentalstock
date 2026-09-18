@@ -15,7 +15,7 @@ type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
 
 const ConfirmContext = createContext<ConfirmFn | null>(null);
 
-/** Abre o modal de confirmação e resolve com true/false.
+/** Opens the confirmation modal and resolves with true/false.
  *   const confirm = useConfirm();
  *   if (await confirm({ title: "Excluir?", tone: "danger" })) { ... }
  */

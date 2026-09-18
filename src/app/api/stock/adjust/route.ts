@@ -1,8 +1,9 @@
 /**
- * Adaptador de entrada: /api/stock/adjust — correção manual de saldo.
+ * Inbound adapter: /api/stock/adjust — manual balance correction.
  *
- * Exige motivo (validado no caso de uso). Ajuste sem justificativa é justamente
- * o registro que não explica nada quando o estoque não fecha.
+ * Requires a reason (validated in the use case). An adjustment without
+ * justification is exactly the record that explains nothing when stock does
+ * not add up.
  */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
@@ -12,8 +13,8 @@ import { readJsonBody } from "@/shared/infrastructure/http/request";
 export const dynamic = "force-dynamic";
 
 export const POST = route("catalogManager", async ({ req, actor }) => {
-  // Diferente da entrada: corrigir saldo "na canetada" é decisão de quem
-  // responde pelo estoque, não tarefa de bancada.
+  // Unlike an entry: correcting a balance by hand is a decision for whoever
+  // answers for the stock, not a chairside task.
   const body = await readJsonBody(req);
 
   const material = await container.inventory.adjustStock.execute(actor, {

@@ -1,23 +1,23 @@
 /**
- * Value Objects primitivos, usados por mais de um módulo.
+ * Primitive value objects shared by more than one module.
  *
- * Cada tipo garante suas próprias invariantes no construtor: se existe uma
- * instância, ela é válida. Isso concentra a validação (OWASP A03 — validação
- * por allowlist na fronteira do domínio) em vez de espalhá-la pelas rotas.
+ * Each type enforces its own invariants in the constructor: if an instance
+ * exists, it is valid. That concentrates validation (OWASP A03 — allowlist
+ * validation at the domain boundary) instead of scattering it across routes.
  *
- * Value Objects específicos de um contexto moram no domínio do próprio módulo.
+ * Context-specific value objects live in their own module's domain.
  */
 import { ValidationError } from "./errors";
 
-/** E-mail normalizado (minúsculas, sem espaços). */
+/** Normalized e-mail (lowercase, no surrounding spaces). */
 export class Email {
   private constructor(readonly value: string) {}
 
-  // Verificação deliberadamente conservadora: um único "@", partes não vazias,
-  // domínio com ponto e sem espaços. Não tenta cobrir a RFC 5322 inteira —
-  // e-mail só se confirma de fato enviando mensagem.
+  // Deliberately conservative check: a single "@", non-empty parts, a dotted
+  // domain and no spaces. It does not try to cover all of RFC 5322 — an
+  // address is only truly confirmed by sending a message to it.
   private static readonly PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  private static readonly MAX = 254; // limite prático de e-mail
+  private static readonly MAX = 254; // practical e-mail length limit
 
   static create(raw: unknown, field = "email"): Email {
     if (typeof raw !== "string") {
@@ -35,7 +35,7 @@ export class Email {
   }
 }
 
-/** Telefone brasileiro (10 ou 11 dígitos, com DDD). */
+/** Brazilian phone number (10 or 11 digits, area code included). */
 export class PhoneNumber {
   private constructor(
     readonly digits: string,
@@ -47,7 +47,7 @@ export class PhoneNumber {
       throw new ValidationError("Telefone é obrigatório.", field);
     }
     const digits = raw.replace(/\D/g, "");
-    // Aceita 12–13 dígitos para números já com o código do país (55).
+    // Accepts 12-13 digits for numbers that already carry the country code.
     const local = digits.length > 11 && digits.startsWith("55") ? digits.slice(2) : digits;
     if (local.length < 10 || local.length > 11) {
       throw new ValidationError("Informe um telefone com DDD.", field);
@@ -60,7 +60,7 @@ export class PhoneNumber {
   }
 }
 
-/** Texto curto obrigatório (nomes, títulos), com limite contra abuso. */
+/** Required short text (names, titles), capped against abuse. */
 export class NonEmptyText {
   private constructor(readonly value: string) {}
 
@@ -75,11 +75,12 @@ export class NonEmptyText {
   }
 
   /**
-   * Texto opcional: ausência, valor não textual ou string vazia viram `null`;
-   * texto presente passa pelas mesmas regras de `create`, com limite `max`.
+   * Optional text: absence, a non-string value or an empty string become
+   * `null`; text that is present goes through the same rules as `create`,
+   * bounded by `max`.
    *
-   * Substitui três helpers privados que existiam com nomes diferentes
-   * (`optionalText`, `optionalNote` e variações) e a mesma regra.
+   * Replaces three private helpers that existed under different names
+   * (`optionalText`, `optionalNote` and variations) with the same rule.
    */
   static optional(raw: unknown, field: string, max = 200): string | null {
     if (typeof raw !== "string") return null;
@@ -93,7 +94,7 @@ export class NonEmptyText {
   }
 }
 
-/** Quantidade positiva e finita (estoque, consumo). */
+/** Positive, finite quantity (stock, consumption). */
 export class Quantity {
   private constructor(readonly value: number) {}
 
@@ -107,7 +108,7 @@ export class Quantity {
   }
 }
 
-/** Valor de estoque: aceita zero, recusa negativo. */
+/** Stock level: zero is allowed, negative is not. */
 export class StockLevel {
   private constructor(readonly value: number) {}
 
@@ -122,11 +123,11 @@ export class StockLevel {
 }
 
 /**
- * Valor monetário em reais.
+ * Monetary value in Brazilian reais.
  *
- * Arredonda para centavos na fronteira: custo entra por formulário e por
- * cálculo de média ponderada, e deixar `0.1 + 0.2` circular pelo sistema faria
- * o relatório fechar com sobra de fração de centavo.
+ * Rounds to cents at the boundary: cost enters both from forms and from the
+ * weighted-average calculation, and letting `0.1 + 0.2` travel through the
+ * system would leave reports off by a fraction of a cent.
  */
 export class Money {
   private constructor(readonly value: number) {}
@@ -142,7 +143,7 @@ export class Money {
     return new Money(Math.round(raw * 100) / 100);
   }
 
-  /** Aceita ausência: campo de custo é opcional em todo o sistema. */
+  /** Accepts absence: the cost field is optional everywhere in the system. */
   static optional(raw: unknown, field = "unitCost"): number | null {
     if (raw === undefined || raw === null || raw === "") return null;
     return Money.create(raw, field).value;
@@ -150,11 +151,11 @@ export class Money {
 }
 
 /**
- * Data de calendário vinda de um `<input type="date">` (AAAA-MM-DD).
+ * Calendar date coming from an `<input type="date">` (YYYY-MM-DD).
  *
- * Fixa o horário em meio-dia UTC de propósito: `new Date("2026-08-02")` é
- * meia-noite UTC, que no fuso do Brasil volta para o dia 1º — uma validade
- * apareceria na tela um dia antes da que foi digitada.
+ * Pins the time at noon UTC on purpose: `new Date("2026-08-02")` is midnight
+ * UTC, which in Brazil's timezone falls back to the 1st — an expiry date would
+ * show up on screen one day earlier than the one that was typed.
  */
 export class CalendarDate {
   private constructor(readonly value: Date) {}

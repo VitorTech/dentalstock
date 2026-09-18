@@ -18,12 +18,12 @@ import FinalizePanel from "./internal/FinalizePanel";
 import { duplicateProcedure } from "@/modules/catalog/ui/api";
 
 /**
- * Card de um procedimento: composição (materiais e instrumentais), custo
- * estimado e finalização.
+ * A procedure card: composition (materials and instruments), estimated cost
+ * and finalization.
  *
- * O card só orquestra. A conversa com a API mora nos hooks
- * `useProcedureComposition` e `useFinalizeProcedure`; as partes visuais
- * independentes, em `KitPicker` e `FinalizePanel`.
+ * The card only orchestrates. Talking to the API lives in the
+ * `useProcedureComposition` and `useFinalizeProcedure` hooks; the independent
+ * visual parts live in `FinalizePanel`.
  */
 export default function ProcedureItem({
   procedure,
@@ -60,7 +60,7 @@ export default function ProcedureItem({
   const finalization = useFinalizeProcedure({
     procedureId: procedure.id,
     materials,
-    // O card mostra o saldo de cada material: adota o que o servidor devolveu.
+    // The card shows each material's balance: adopt what the server returned.
     onStockUpdated: (updated) =>
       composition.setMaterials((prev) =>
         prev.map((pm) => {
@@ -85,7 +85,7 @@ export default function ProcedureItem({
     try {
       onDuplicated(await duplicateProcedure(procedure.id));
     } catch {
-      // Nada muda na tela: a lista continua sem a cópia.
+      // Nothing changes on screen: the list simply stays without the copy.
     } finally {
       setDuplicating(false);
     }
@@ -223,8 +223,8 @@ export default function ProcedureItem({
                 </AddButton>
               </div>
 
-              {/* O texto fica dentro de um <span> próprio: se ele for filho
-                  direto do flex, cada <strong> vira um item e o texto quebra. */}
+              {/* The text sits inside its own <span>: as a direct flex child,
+                  each <strong> becomes an item and the sentence breaks up. */}
               <div className="mb-3 flex items-start gap-1.5 rounded-xl bg-canvas px-3 py-2">
                 <Info size={13} className="mt-0.5 shrink-0 text-subink" />
                 <span className="text-[12px] leading-relaxed text-subink">

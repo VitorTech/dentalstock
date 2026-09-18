@@ -1,6 +1,6 @@
 import type { UserRole } from "@/shared/domain";
 
-/** Membro da equipe como a API `/api/team` o devolve. */
+/** Team member as the `/api/team` endpoint returns it. */
 export interface TeamUser {
   id: string;
   name: string;
@@ -8,7 +8,7 @@ export interface TeamUser {
   role: UserRole;
 }
 
-/** Explica, no convite e na troca de papel, o que cada papel pode fazer. */
+/** Explains, in the invite and role screens, what each role can do. */
 export const ROLE_HINT: Record<string, string> = {
   MEMBER: "Vê custos, edita catálogo e gerencia a equipe.",
   ASSISTANT: "Finaliza procedimentos e dá entrada no estoque. Não vê custos nem edita cadastros.",

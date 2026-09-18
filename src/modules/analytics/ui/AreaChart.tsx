@@ -2,8 +2,8 @@
 
 import { useId } from "react";
 
-/** Gráfico de área simples em SVG, responsivo e sem dependências.
- * Usa a cor de destaque do tema (var(--accent)). */
+/** Simple SVG area chart, responsive and dependency-free.
+ * Uses the theme's accent color (var(--accent)). */
 export default function AreaChart({
   data,
   height = 120,

@@ -1,13 +1,14 @@
-/** Value Objects do catálogo. */
+/** Catalog value objects. */
 
 /**
- * URL de imagem opcional.
+ * Optional image URL.
  *
- * Somente http/https por allowlist: `javascript:` ou `data:` em `src` de imagem
- * abrem porta para XSS quando o valor é renderizado (OWASP A03).
+ * http/https only, by allowlist: `javascript:` or `data:` in an image `src`
+ * opens the door to XSS when the value is rendered (OWASP A03).
  *
- * Como `TrackingTag`, nunca lança: URL inválida vira ausência de imagem, e a
- * tela cai no ícone de reserva — um link quebrado não impede cadastrar material.
+ * It never throws: an invalid URL becomes no image at all, and the screen
+ * falls back to a placeholder icon — a broken link must not block registering
+ * a material.
  */
 export class ImageUrl {
   private static readonly MAX = 2048;

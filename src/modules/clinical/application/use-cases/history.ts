@@ -1,4 +1,4 @@
-/** Histórico de atendimentos e sua exportação. */
+/** Appointment history and its export. */
 import type { ProcedureExecution } from "@/modules/clinical/domain";
 import type { Uuid } from "@/shared/domain";
 import type { ProcedureExecutionRepository } from "../ports";
@@ -17,7 +17,7 @@ export class ListHistoryUseCase {
   }
 }
 
-/** Teto de linhas da exportação: protege memória do servidor e do Excel. */
+/** Export row cap: protects both the server's memory and Excel. */
 const EXPORT_MAX_ROWS = 5000;
 
 export interface ExportRow {
@@ -35,15 +35,14 @@ export interface ExportRow {
 }
 
 /**
- * Histórico em formato de planilha — uma linha por ITEM, não por procedimento.
+ * History as a spreadsheet — one row per ITEM, not per procedure.
  *
- * É a forma que o contador e o próprio dono conseguem usar: dá para somar por
- * material, por especialidade ou por mês numa tabela dinâmica. Uma linha por
- * procedimento, com os itens amontoados numa célula, não permite nenhuma dessas
- * contas.
+ * That is the shape an accountant (and the owner) can actually use: it allows
+ * summing by material, by specialty or by month in a pivot table. One row per
+ * procedure, with items crammed into a cell, allows none of those.
  *
- * Estornados entram marcados em vez de sumirem: quem confere quer ver que o
- * lançamento existiu e foi desfeito.
+ * Reversed entries appear flagged instead of disappearing: whoever is checking
+ * wants to see that the entry existed and was undone.
  */
 export class ExportHistoryUseCase {
   constructor(private readonly executions: ProcedureExecutionRepository) {}

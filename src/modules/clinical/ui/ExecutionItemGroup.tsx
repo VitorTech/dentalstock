@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { fmtMoney, fmtQty } from "@/shared/ui/format";
 
-/** Item de um atendimento como a API de histórico o devolve. */
+/** An appointment item as the history API returns it. */
 export type ExecutionItemLine = {
   id: string;
   kind: string;
@@ -13,7 +13,7 @@ export type ExecutionItemLine = {
   unitCost: number | null;
 };
 
-/** Itens consumidos por um atendimento, agrupados por tipo. */
+/** Items consumed in an appointment, grouped by kind. */
 export default function ItemGroup({
   icon,
   title,

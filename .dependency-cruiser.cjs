@@ -1,14 +1,14 @@
 /**
- * Regras de arquitetura verificadas em CI (`npm run arch`).
+ * Architecture rules checked by `npm run arch`.
  *
- * Cada regra aqui é uma decisão descrita em ARCHITECTURE.md. Se uma delas
- * precisar de exceção, a conversa é sobre a arquitetura — não sobre silenciar
- * o verificador.
+ * Every rule here is a decision described in ARCHITECTURE.md. If one of them
+ * needs an exception, the conversation is about the architecture — not about
+ * silencing the checker.
  */
 
 /**
- * Ordem dos módulos: cada um só pode depender dos que vêm ANTES.
- * Ex.: `inventory` usa `catalog`; `catalog` nunca usa `inventory`.
+ * Module order: each one may only depend on those that come BEFORE it.
+ * E.g. `inventory` uses `catalog`; `catalog` never uses `inventory`.
  */
 const MODULE_ORDER = ["account", "identity", "catalog", "inventory", "clinical", "analytics"];
 
@@ -18,7 +18,7 @@ const moduleOrderRules = MODULE_ORDER.map((name, index) => {
     ? null
     : {
         name: `module-order:${name}`,
-        comment: `"${name}" não pode depender de módulos posteriores (${later.join(", ")}).`,
+        comment: `"${name}" must not depend on later modules (${later.join(", ")}).`,
         severity: "error",
         from: { path: `^src/modules/${name}/` },
         to: { path: `^src/modules/(${later.join("|")})/` },
@@ -29,17 +29,17 @@ module.exports = {
   forbidden: [
     {
       name: "no-circular",
-      comment: "Ciclos tornam a ordem de carregamento frágil e acoplam o que deveria ser independente.",
+      comment: "Cycles make load order fragile and couple what should stay independent.",
       severity: "error",
       from: {},
       to: { circular: true },
     },
 
-    // ── Camadas dentro de cada módulo ────────────────────────────────────────
+    // ── Layers inside each module ─────────────────────────────────────────────
     {
       name: "domain-is-pure",
       comment:
-        "Domínio é código puro: só depende de outros domínios. Nada de aplicação, adaptadores, UI, framework ou bibliotecas.",
+        "The domain is pure code: it only depends on other domains. No application, adapters, UI, framework or libraries.",
       severity: "error",
       from: { path: "^src/(modules/[^/]+|shared)/domain/", pathNot: "\\.test\\.ts$" },
       to: {
@@ -49,7 +49,7 @@ module.exports = {
     {
       name: "application-depends-on-ports-only",
       comment:
-        "Casos de uso falam com o mundo por portas (interfaces). Implementações concretas entram pelo container.",
+        "Use cases talk to the world through ports (interfaces). Concrete implementations are wired in the container.",
       severity: "error",
       from: { path: "^src/(modules/[^/]+|shared)/application/", pathNot: "\\.test\\.ts$" },
       to: {
@@ -59,7 +59,7 @@ module.exports = {
     {
       name: "ui-stays-on-the-client-side",
       comment:
-        "Interface não importa aplicação, adaptadores, infraestrutura ou o container: conversa com o servidor só via HTTP.",
+        "The UI imports no application, adapters, infrastructure or container: it talks to the server over HTTP only.",
       severity: "error",
       from: { path: "^src/(modules/[^/]+|shared)/ui/" },
       to: {
@@ -74,17 +74,17 @@ module.exports = {
     },
     {
       name: "adapters-do-not-reach-up",
-      comment: "Adaptadores implementam portas; não conhecem UI, rotas nem o container.",
+      comment: "Adapters implement ports; they know nothing about UI, routes or the container.",
       severity: "error",
       from: { path: "^src/(modules/[^/]+/adapters|shared/infrastructure)/" },
       to: { path: ["^src/(modules/[^/]+|shared)/ui/", "^src/app/", "^src/server/"] },
     },
 
-    // ── Fronteiras entre módulos ────────────────────────────────────────────
+    // ── Boundaries between modules ────────────────────────────────────────────
     ...moduleOrderRules,
     {
       name: "shared-knows-no-module",
-      comment: "`shared` é a base de todos; se precisa de um módulo, o código pertence a esse módulo.",
+      comment: "`shared` is everyone's base; if it needs a module, the code belongs in that module.",
       severity: "error",
       from: { path: "^src/shared/" },
       to: { path: "^src/modules/" },
@@ -92,7 +92,7 @@ module.exports = {
     {
       name: "cross-module-through-barrels",
       comment:
-        "De fora do módulo, domínio e aplicação são acessados pelo index.ts — o que não está exportado ali é detalhe interno.",
+        "From outside the module, domain and application are reached through index.ts — whatever is not exported there is an internal detail.",
       severity: "error",
       from: { path: "^src/modules/([^/]+)/" },
       to: {
@@ -102,21 +102,21 @@ module.exports = {
     },
     {
       name: "outside-modules-through-barrels",
-      comment: "Rotas, páginas e o container também entram no domínio e na aplicação pelo index.ts.",
+      comment: "Routes, pages and the container also enter domain and application through index.ts.",
       severity: "error",
       from: { path: "^src/(app|server)/" },
       to: {
         path: "^src/modules/[^/]+/(domain|application)/.+",
         pathNot: [
           "^src/modules/[^/]+/(domain|application)/index\\.ts$",
-          // O container é a raiz de composição: é o único lugar que instancia casos de uso.
+          // The container is the composition root: the only place that instantiates use cases.
           "^src/modules/[^/]+/application/use-cases/",
         ],
       },
     },
     {
       name: "only-container-wires-use-cases",
-      comment: "Casos de uso e adaptadores de saída são instanciados apenas em src/server/container.ts.",
+      comment: "Use cases and outbound adapters are instantiated only in src/server/container.ts.",
       severity: "error",
       from: { path: "^src/", pathNot: ["^src/server/container\\.ts$", "^src/modules/"] },
       to: {
@@ -128,25 +128,25 @@ module.exports = {
       },
     },
 
-    // ── Borda HTTP e servidor ───────────────────────────────────────────────
+    // ── HTTP edge and server ──────────────────────────────────────────────────
     {
       name: "routes-are-thin",
       comment:
-        "Rotas só traduzem HTTP: acesso por route(), regra pelo container, saída pelos presenters. Nunca Prisma direto.",
+        "Routes only translate HTTP: access through route(), rules through the container, output through presenters. Never Prisma directly.",
       severity: "error",
       from: { path: "^src/app/api/" },
       to: { path: ["@prisma/client", "^src/modules/[^/]+/ui/", "^src/(app/_shell|shared/ui)/"] },
     },
     {
       name: "server-code-stays-out-of-module-ui",
-      comment: "O container e a autenticação de servidor não podem ser importados por componentes de módulo.",
+      comment: "The container and server-side auth must not be imported by module components.",
       severity: "error",
       from: { path: "^src/(modules|shared)/" },
       to: { path: "^src/server/" },
     },
     {
       name: "module-ui-does-not-know-the-shell",
-      comment: "O shell (cabeçalho, menu) compõe as telas; as telas de módulo não dependem dele.",
+      comment: "The shell (header, menu) composes the screens; module screens do not depend on it.",
       severity: "error",
       from: { path: "^src/modules/" },
       to: { path: "^src/app/" },
@@ -154,7 +154,7 @@ module.exports = {
     {
       name: "feature-internals-are-private",
       comment:
-        "ui/internal é o miolo de uma feature: só a própria feature entra lá. É o que faz o resto da ui ser API pública de verdade.",
+        "ui/internal is a feature's core: only that feature may enter. It is what makes the rest of its ui a real public API.",
       severity: "error",
       from: { path: "^src/(app|shared|modules/([^/]+))/", pathNot: "^src/modules/([^/]+)/ui/internal/" },
       to: {
@@ -164,7 +164,7 @@ module.exports = {
     },
     {
       name: "no-orphans",
-      comment: "Arquivo que ninguém importa é código morto (exceto pontos de entrada do Next e testes).",
+      comment: "A file nobody imports is dead code (except Next entry points and tests).",
       severity: "warn",
       from: {
         orphan: true,
@@ -181,8 +181,8 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: "node_modules" },
-    // Não excluir node_modules aqui: isso apaga também as ARESTAS para pacotes,
-    // e regras como "rota não importa @prisma/client" deixariam de enxergá-las.
+    // Do not exclude node_modules here: that also erases the EDGES to packages,
+    // and rules such as "a route must not import @prisma/client" would go blind.
     exclude: { path: ["^\\.next/"] },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },

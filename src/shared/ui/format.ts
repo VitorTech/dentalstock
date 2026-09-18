@@ -1,12 +1,12 @@
-/** Formatação compartilhada pelas telas — uma só definição para todas. */
+/** Formatting shared by the screens — one definition for all of them. */
 
 import { toDate, type DateLike } from "@/shared/domain";
 
-/** Quantidade: inteiro sem casas, fracionado com uma. */
+/** Quantity: integers without decimals, fractions with one. */
 export const fmtQty = (value: number): string =>
   Number.isInteger(value) ? String(value) : value.toFixed(1);
 
-/** Valor em reais. `null` vira travessão: ausência de preço não é "R$ 0,00". */
+/** Amount in reais. `null` becomes a dash: no price is not "R$ 0,00". */
 export const fmtMoney = (value: number | null | undefined): string =>
   value === null || value === undefined
     ? "—"
@@ -28,11 +28,11 @@ export const fmtDateTime = (value: DateLike): string =>
     minute: "2-digit",
   });
 
-/** Data no formato aceito por `<input type="date">`. */
+/** Date in the format accepted by `<input type="date">`. */
 export const toDateInput = (value: DateLike | null): string =>
   value ? toDate(value).toISOString().slice(0, 10) : "";
 
-/** Data por extenso ("16 de setembro de 2026"); ausência vira travessão. */
+/** Long-form date ("16 de setembro de 2026"); absence becomes a dash. */
 export const fmtLongDate = (value: DateLike | null): string =>
   value
     ? toDate(value).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })

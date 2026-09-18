@@ -1,10 +1,8 @@
 /**
- * Identidade da requisição atual, para rotas e Server Components.
+ * Identity of the current request, for routes and Server Components.
  *
- * Reúne o que antes estava espalhado em três arquivos (`currentActor` no
- * container, os guardas em `http/guards.ts` e a sessão em `http/session.ts`).
- * Cada guarda lança erro de domínio, e a tradução para status HTTP fica com o
- * tratador de erros — ou com o layout, que redireciona.
+ * Each guard throws a domain error, and translating it into an HTTP status is
+ * left to the error handler — or to the layout, which redirects.
  */
 import "server-only";
 
@@ -13,29 +11,29 @@ import type { AuthenticatedActor } from "@/shared/domain";
 import { container } from "./container";
 
 /**
- * Resolve quem está chamando a partir do cookie. Devolve null quando não há
- * sessão válida.
+ * Resolves who is calling from the cookie. Returns null when there is no
+ * valid session.
  */
 export async function currentActor(): Promise<AuthenticatedActor | null> {
   const token = await container.identity.tokenTransport().read();
   return container.identity.authenticate.execute(token);
 }
 
-/** Guarda padrão das rotas de dados: exige sessão válida. */
+/** Default guard of the data routes: requires a valid session. */
 export async function requireAuthenticated(): Promise<AuthenticatedActor> {
   return container.identity.authorization.requireActor(await currentActor());
 }
 
-/** Sessão válida + permissão de alterar o cadastro da clínica. */
+/** Valid session + permission to change the clinic's catalog. */
 export async function requireCatalogManager(): Promise<AuthenticatedActor> {
   return container.identity.authorization.requireCatalogManager(await currentActor());
 }
 
 /**
- * Sessão completa (ator, usuário e clínica) ou null.
+ * The full session (actor, user and clinic), or null.
  *
- * Trata igual sessão inválida e sessão órfã — usuário ou clínica excluídos:
- * nos dois casos não há contexto utilizável, e o layout manda para o login.
+ * An invalid session and an orphan one — deleted user or clinic — are treated
+ * alike: neither gives a usable context, and the layout sends both to login.
  */
 export async function getSessionContext(): Promise<CurrentSession | null> {
   const actor = await currentActor();

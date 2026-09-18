@@ -1,8 +1,8 @@
 /**
- * Catálogo: o que a clínica tem e como cada procedimento é montado.
+ * Catalog: what the clinic owns and how each procedure is composed.
  *
- * Materiais, instrumentais, fornecedores, procedimentos e kits. São os dados
- * de referência sobre os quais estoque e atendimento operam.
+ * Materials, instruments, suppliers and procedures. These are the reference
+ * data that inventory and clinical work operate on.
  */
 import type { Uuid } from "@/shared/domain";
 
@@ -26,20 +26,19 @@ export interface Material {
   minStock: number;
   supplierId: Uuid | null;
   supplier?: Supplier | null;
-  /** Custo de uma unidade. `null` quando a clínica ainda não informou preço. */
+  /** Cost of a single unit. `null` while the clinic has not entered a price. */
   unitCost: number | null;
-  /** Validade do lote corrente. */
+  /** Expiry date of the current batch. */
   expiresAt: Date | null;
-  /** Código de barras (EAN/UPC), para entrada e baixa pela câmera. */
 }
 
 /**
- * Instrumental é reutilizável: tem inventário, mas não é consumido.
+ * An instrument is reusable: it has inventory, but is not consumed.
  *
- * Não tem estoque mínimo, e a ausência é intencional. Estoque mínimo existe
- * para disparar reposição de algo que se gasta; instrumental volta para a
- * bancada depois do procedimento, então a única informação útil é quantos a
- * clínica possui.
+ * It has no minimum stock, and that absence is intentional. A minimum exists
+ * to trigger restocking of something that gets used up; an instrument returns
+ * to the bench after the procedure, so the only useful information is how many
+ * the clinic owns.
  */
 export interface Instrument {
   id: Uuid;

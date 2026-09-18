@@ -1,4 +1,4 @@
-/** Adaptador de entrada: /api/team/[id] */
+/** Inbound adapter: /api/team/[id] */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";
@@ -11,8 +11,8 @@ export const PATCH = route("authenticated", async ({ req, params, actor }) => {
   const id = readId(params.id);
   const body = await readJsonBody(req);
 
-  // Troca de senha e troca de papel numa rota só: são as duas manutenções
-  // que a clínica faz num acesso, e ambas encerram as sessões do usuário.
+  // Password change and role change on one route: they are the two maintenance
+  // actions a clinic performs on an access, and both end the user's sessions.
   if (body.password !== undefined) {
     await container.identity.resetTeamMemberPassword.execute(actor, id, body.password);
     return NextResponse.json({ ok: true });

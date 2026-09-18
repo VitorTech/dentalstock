@@ -1,21 +1,22 @@
 import type { ThemeMode } from "@/modules/account/domain";
 
 /**
- * Aplica o tema da clínica (modo e cor de destaque) nas áreas autenticadas.
+ * Applies the clinic's theme (mode and accent color) to authenticated areas.
  *
- * Existe porque o layout raiz deixou de ler a sessão: fazer isso lá tornava
- * dinâmica até a landing pública, que não depende de quem está logado. Aqui o
- * custo fica onde faz sentido — em páginas que já exigem sessão e já são
- * renderizadas sob demanda.
+ * It exists because the root layout no longer reads the session: doing it
+ * there made even the public landing dynamic, though it does not depend on who
+ * is signed in. Here the cost lands where it makes sense — on pages that
+ * already require a session and are already rendered on demand.
  *
- * O script é inline e roda enquanto o HTML ainda está sendo transmitido, antes
- * de o conteúdo da página pintar. Por isso quem escolheu tema escuro não vê o
- * claro piscar antes.
+ * The script is inline and runs while the HTML is still streaming, before the
+ * page content paints. That is why someone who picked the dark theme never
+ * sees the light one flash first.
  *
- * Nota de segurança: `mode` e `accent` vêm do banco, mas foram validados na
- * escrita (ThemeMode é união fechada; a cor passa pelo value object HexColor).
- * Ainda assim são serializados com JSON.stringify, e não interpolados direto —
- * é o que impede que um valor inesperado feche a string e vire código.
+ * Security note: `mode` and `accent` come from the database, but were
+ * validated on write (ThemeMode is a closed union; the color goes through the
+ * HexColor value object). They are still serialized with JSON.stringify rather
+ * than interpolated directly — that is what stops an unexpected value from
+ * closing the string and becoming code.
  */
 export default function TenantTheme({
   mode,

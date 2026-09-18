@@ -178,8 +178,9 @@ export function CreateInstrumentForm({
 }) {
   const [name, setName] = useState(initialName);
   const [category, setCategory] = useState("");
-  // Texto, não número: o campo é opcional, e "" precisa ser distinguível de 0
-  // para não enviar quantidade quando a clínica ainda não contou o inventário.
+  // Text, not a number: the field is optional, and "" must stay
+  // distinguishable from 0 so we do not send a quantity when the clinic has not
+  // counted its inventory yet.
   const [stock, setStock] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -200,7 +201,7 @@ export function CreateInstrumentForm({
           name: name.trim(),
           category: category.trim() || null,
           imageUrl: imageUrl.trim() || null,
-          // Omitido quando em branco: o caso de uso assume zero nesse caso.
+          // Omitted when blank: the use case assumes zero in that case.
           ...(stock.trim() === "" ? {} : { stock: Number(stock) }),
         })
       );

@@ -8,7 +8,7 @@
         "patterns": [
           {
             "group": ["../../*"],
-            "message": "Use o alias @/ para sair da pasta atual: caminhos relativos longos quebram quando arquivos mudam de lugar."
+            "message": "Use the @/ alias to leave the current folder: long relative paths break when files move."
           }
         ]
       }
@@ -23,7 +23,7 @@
           "error",
           {
             "selector": "CallExpression[callee.name='fetch']",
-            "message": "Não chame fetch aqui. Declare a operação em modules/<feature>/ui/api.ts — é lá que moram as URLs e o formato das respostas."
+            "message": "Do not call fetch here. Declare the operation in modules/<feature>/ui/api.ts — that is where URLs and response shapes live."
           }
         ],
         "no-restricted-imports": [
@@ -32,14 +32,14 @@
             "patterns": [
               {
                 "group": ["../../*"],
-                "message": "Use o alias @/ para sair da pasta atual: caminhos relativos longos quebram quando arquivos mudam de lugar."
+                "message": "Use the @/ alias to leave the current folder: long relative paths break when files move."
               }
             ],
             "paths": [
               {
                 "name": "@/shared/ui/api-client",
                 "importNames": ["apiGet", "apiSend"],
-                "message": "apiGet/apiSend são o transporte usado pelas APIs de feature. Na tela, chame a função da feature (ex.: listMaterials). Importar ApiError aqui é permitido."
+                "message": "apiGet/apiSend are the transport used by the feature APIs. In a screen, call the feature function (e.g. listMaterials). Importing ApiError here is allowed."
               }
             ]
           }

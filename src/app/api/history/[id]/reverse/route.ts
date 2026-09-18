@@ -1,8 +1,8 @@
 /**
- * Adaptador de entrada: /api/history/[id]/reverse — estorna uma finalização.
+ * Inbound adapter: /api/history/[id]/reverse — reverses a finalization.
  *
- * POST, não DELETE: o registro não é apagado. Ele passa a constar como
- * estornado, e o material volta ao estoque.
+ * POST, not DELETE: the record is not erased. It starts showing as reversed,
+ * and the materials go back to stock.
  */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
@@ -12,7 +12,7 @@ import { readId } from "@/shared/infrastructure/http/request";
 export const dynamic = "force-dynamic";
 
 export const POST = route("catalogManager", async ({ params, actor }) => {
-  // Desfazer lançamento é decisão de quem responde pelo estoque.
+  // Undoing an entry is a decision for whoever answers for the stock.
   await container.clinical.reverseExecution.execute(actor, readId(params.id));
   return NextResponse.json({ ok: true });
 });

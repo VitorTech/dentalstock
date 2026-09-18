@@ -1,4 +1,4 @@
-/** Adaptador de entrada: GET /api/auth/me — identidade e tema da clínica. */
+/** Inbound adapter: GET /api/auth/me — identity and clinic theme. */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export const GET = route("authenticated", async ({ actor }) => {
   const session = await container.identity.getCurrentSession.execute(actor);
-  // Sessão órfã (usuário ou clínica excluídos) equivale a não ter sessão.
+  // An orphan session (deleted user or clinic) is the same as having none.
   if (!session) throw new UnauthorizedError();
   return NextResponse.json(toSessionResponse(session));
 });

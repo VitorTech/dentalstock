@@ -1,4 +1,4 @@
-/** Adaptador de entrada: /api/procedures/[id]/instruments */
+/** Inbound adapter: /api/procedures/[id]/instruments */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";

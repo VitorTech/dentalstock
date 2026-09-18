@@ -1,25 +1,25 @@
 /**
- * Autorização — uma única porta de entrada para "quem pode fazer o quê".
+ * Authorization — a single entry point for "who may do what".
  *
- * Concentrar isso aqui evita o pior tipo de falha de multi-tenant: uma rota
- * nova que esquece de checar o ator e passa a responder sem sessão.
+ * Concentrating it here avoids the worst kind of multi-tenant failure: a new
+ * route that forgets to check the actor and starts answering without a session.
  */
 import { canManageCatalog } from "@/modules/identity/domain";
 import { type AuthenticatedActor, ForbiddenError, UnauthorizedError } from "@/shared/domain";
 
 export class AuthorizationService {
-  /** Exige sessão válida. */
+  /** Requires a valid session. */
   requireActor(actor: AuthenticatedActor | null): AuthenticatedActor {
     if (!actor) throw new UnauthorizedError();
     return actor;
   }
 
   /**
-   * Exige permissão para alterar o cadastro da clínica.
+   * Requires permission to change the clinic's catalog.
    *
-   * Guarda das rotas de escrita de material, instrumental, fornecedor e
-   * procedimento — tudo que define COMO a clínica trabalha. O auxiliar opera
-   * dentro dessas definições, não as reescreve.
+   * Guards the write routes for materials, instruments, suppliers and
+   * procedures — everything that defines HOW the clinic works. The assistant
+   * operates within those definitions instead of rewriting them.
    */
   requireCatalogManager(actor: AuthenticatedActor | null): AuthenticatedActor {
     const current = this.requireActor(actor);

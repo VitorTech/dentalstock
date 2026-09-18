@@ -15,7 +15,7 @@ import { useMe } from "@/modules/identity/ui/use-me";
 import { fmtDateTime, fmtMoney, fmtQty } from "@/shared/ui/format";
 import type { StockMovementType } from "@/modules/inventory/domain";
 
-/** Rótulo, ícone e cor de cada natureza de movimento. */
+/** Label, icon and color for each kind of movement. */
 const KINDS: Record<
   StockMovementType,
   { label: string; icon: typeof ArrowUpRight; tone: string }
@@ -53,7 +53,7 @@ export default function MovimentacoesPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Chegando de /materiais, o extrato já vem restrito a um material.
+  // Arriving from /materiais, the ledger is already scoped to one material.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setMaterialId(params.get("materialId"));

@@ -1,4 +1,4 @@
-/** Casos de uso de fornecedores. */
+/** Supplier use cases. */
 import type { Supplier } from "@/modules/catalog/domain";
 import { NonEmptyText, NotFoundError, type Uuid, ValidationError } from "@/shared/domain";
 import type { SupplierRepository } from "../ports";

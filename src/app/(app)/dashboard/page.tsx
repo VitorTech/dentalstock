@@ -21,8 +21,8 @@ export default function DashboardPage() {
     });
   }, []);
 
-  // Ranking apenas por consumo REAL (finalizações). Clínica que nunca
-  // finalizou um procedimento aparece zerada, não com dados de demanda.
+  // Ranking by REAL consumption only (finalizations). A clinic that never
+  // finalized a procedure shows zeros instead of theoretical demand.
   const usedItems: BarItem[] = (data?.topConsumed ?? []).map((m) => ({
     id: m.id,
     label: m.name,
@@ -97,7 +97,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Custo — omitido pela API para quem não pode ver valores */}
+            {/* Cost — omitted by the API for whoever cannot see amounts */}
             {data.cost && (
               <div className="rounded-xl2 border border-hairline bg-surface p-6 shadow-card">
                 <div className="mb-1 flex items-center gap-2">
@@ -164,7 +164,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Validade */}
+            {/* Expiry */}
             {data.expiring.length > 0 && (
               <div className="rounded-xl2 border border-warn/30 bg-surface p-6 shadow-card">
                 <div className="mb-4 flex items-center justify-between">
@@ -204,7 +204,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Mais utilizados + Consumo */}
+            {/* Most used + consumption */}
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-xl2 border border-hairline bg-surface p-6 shadow-card">
                 <div className="mb-1 flex items-center gap-2">
@@ -243,7 +243,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Consumo por especialidade */}
+            {/* Consumption by specialty */}
             <div className="rounded-xl2 border border-hairline bg-surface p-6 shadow-card">
               <div className="mb-1 flex items-center gap-2">
                 <Stethoscope size={16} className="text-subink" />
@@ -259,7 +259,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Estoque crítico */}
+            {/* Critical stock */}
             <div className="rounded-xl2 border border-hairline bg-surface p-6 shadow-card">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">

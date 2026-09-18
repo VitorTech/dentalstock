@@ -1,17 +1,17 @@
 /**
- * Declaração de rotas de API.
+ * API route declaration.
  *
- * Toda rota passa por aqui, e isso garante duas coisas por construção:
+ * Every route goes through here, which guarantees two things by construction:
  *
- *  - **O nível de acesso é obrigatório e explícito.** Não existe rota sem
- *    decisão de acesso: até as públicas declaram `"public"`. Antes, cada rota
- *    chamava o guarda por conta própria — esquecer a chamada abria a rota sem
- *    que nada acusasse.
+ *  - **The access level is mandatory and explicit.** There is no route without
+ *    an access decision: even public ones declare `"public"`. Before, each
+ *    route called the guard on its own — forgetting the call opened the route
+ *    with nothing flagging it.
  *
- *  - **O contrato do Next fica num lugar só.** A leitura de `params` e o
- *    tratamento de erro não se repetem nos handlers. Quando o projeto migrar
- *    para o Next 15, onde `params` passa a ser uma Promise, a mudança acontece
- *    neste arquivo — não em cada rota dinâmica.
+ *  - **The Next contract lives in one place.** Reading `params` and handling
+ *    errors are not repeated in the handlers. When the project moves to Next
+ *    15, where `params` becomes a Promise, the change happens in this file —
+ *    not in every dynamic route.
  */
 import "server-only";
 
@@ -21,9 +21,9 @@ import { withErrorHandling } from "@/shared/infrastructure/http/errors";
 import { requireAuthenticated, requireCatalogManager } from "../auth";
 
 /**
- * - `public`: sem sessão (login, verificação de saúde).
- * - `authenticated`: sessão válida. Padrão das rotas de dados.
- * - `catalogManager`: além disso, pode alterar o cadastro da clínica.
+ * - `public`: no session (login, health check).
+ * - `authenticated`: valid session. The default for data routes.
+ * - `catalogManager`: on top of that, may change the clinic's catalog.
  */
 export type Access = "public" | "authenticated" | "catalogManager";
 

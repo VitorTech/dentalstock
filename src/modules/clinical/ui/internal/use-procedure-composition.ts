@@ -14,28 +14,28 @@ import {
 import { summarizeCost } from "@/modules/clinical/domain";
 
 /**
- * Materiais e instrumentais de um procedimento, com as edições otimistas.
+ * A procedure's materials and instruments, with optimistic edits.
  *
- * Tira do card toda a conversa com a API: o componente só decide o que exibir,
- * e as regras de "confirmar antes de remover" e "atualizar antes de salvar"
- * ficam num lugar só.
+ * It takes all the API conversation out of the card: the component only
+ * decides what to show, and the rules of "confirm before removing" and
+ * "update before saving" live in one place.
  */
 export function useProcedureComposition(procedure: Procedure) {
   const confirm = useConfirm();
   const [materials, setMaterials] = useState(procedure.materials);
   const [instruments, setInstruments] = useState(procedure.instruments);
 
-  // A lista pai pode trocar o procedimento (busca, duplicação): o estado local
-  // acompanha a nova fonte.
+  // The parent list may swap the procedure (search, duplication): local state
+  // follows the new source.
   useEffect(() => setMaterials(procedure.materials), [procedure.materials]);
   useEffect(() => setInstruments(procedure.instruments), [procedure.instruments]);
 
   /**
-   * Custo estimado da lista atual, pela mesma política usada na finalização.
+   * Estimated cost of the current list, using the same policy as finalization.
    *
-   * `missing` conta os materiais sem preço: mostrar "R$ 12,00" quando metade
-   * dos itens não tem custo cadastrado passaria uma precisão que o número não
-   * tem, então a tela avisa que o total é parcial.
+   * `missing` counts materials without a price: showing "R$ 12,00" when half
+   * the items have no cost registered would imply a precision the number does
+   * not have, so the screen says the total is partial.
    */
   const cost = useMemo(() => {
     const summary = summarizeCost(
@@ -70,7 +70,7 @@ export function useProcedureComposition(procedure: Procedure) {
     await removeProcedureMaterial(procedureMaterialId);
   };
 
-  /** Devolve `true` quando o vínculo foi criado — o chamador fecha o modal. */
+  /** Returns `true` when the link was created — the caller closes the modal. */
   const addMaterial = async (materialId: string, quantity: number): Promise<boolean> => {
     try {
       const created = await addProcedureMaterial(procedure.id, materialId, quantity);

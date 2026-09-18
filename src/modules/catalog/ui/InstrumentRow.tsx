@@ -28,9 +28,9 @@ export default function InstrumentRow({
         <MaterialImage material={pi.instrument} size={38} />
         <div className="min-w-0">
           <p className="break-words text-[14.5px] font-medium leading-snug text-ink">{pi.instrument.name}</p>
-          {/* Instrumental é reutilizável: a quantidade aqui indica quantos são
-              necessários no procedimento, e o estoque NÃO sofre baixa ao
-              finalizar. Por isso nada de alertas de "sem estoque" aqui. */}
+          {/* An instrument is reusable: the quantity here says how many the
+              procedure needs, and stock is NOT deducted on finalize. Hence no
+              "out of stock" warnings here. */}
           <div className="mt-0.5 flex items-center gap-2 text-[12.5px] text-subink">
             <span>{pi.instrument.stock} un cadastradas</span>
           </div>

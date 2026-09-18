@@ -1,9 +1,9 @@
 /**
- * Adaptador de entrada: /api/history/export — histórico em planilha.
+ * Inbound adapter: /api/history/export — history as a spreadsheet.
  *
- * Uma linha por ITEM (não por procedimento), que é o formato utilizável em
- * tabela dinâmica. A montagem das linhas está no caso de uso; aqui só se
- * serializa e se define o cabeçalho de download.
+ * One row per ITEM (not per procedure), which is the shape a pivot table can
+ * use. Building the rows belongs to the use case; here we only serialize and
+ * set the download header.
  */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
@@ -27,8 +27,8 @@ export const GET = route("authenticated", async ({ req, actor }) => {
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      // `attachment` também é defesa: impede que o conteúdo seja renderizado
-      // como página no mesmo domínio.
+      // `attachment` is also a defense: it stops the content from being
+      // rendered as a page on the same domain.
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });

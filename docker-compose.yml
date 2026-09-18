@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: dentalstock
       POSTGRES_PASSWORD: dentalstock
       POSTGRES_DB: dentalstock
-    # 5433 no host: convive com outro Postgres já rodando na 5432.
+    # 5433 on the host: coexists with another Postgres already using 5432.
     ports:
       - "5433:5432"
     volumes:

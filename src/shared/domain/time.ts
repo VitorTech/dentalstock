@@ -1,11 +1,11 @@
-/** Constantes de tempo compartilhadas pelas políticas de domínio. */
+/** Time constants shared by the domain policies. */
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Data como chega a uma política: `Date` no servidor, texto ISO na interface
- * (JSON não tem tipo de data). Aceitar os dois deixa a mesma regra valer dos
- * dois lados sem conversões espalhadas pelas telas.
+ * A date as it reaches a policy: `Date` on the server, ISO text on the client
+ * (JSON has no date type). Accepting both lets the same rule run on both sides
+ * without conversions scattered across the screens.
  */
 export type DateLike = Date | string;
 

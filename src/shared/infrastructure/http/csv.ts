@@ -1,20 +1,20 @@
-/** Serialização de planilhas para download. */
+/** Spreadsheet serialization for download. */
 
 /**
- * Serializa uma tabela em CSV para download.
+ * Serializes a table as CSV for download.
  *
- * Duas decisões que não são estéticas:
+ * Two decisions that are not cosmetic:
  *
- *  - **Ponto e vírgula como separador.** O Excel em português usa vírgula como
- *    separador DECIMAL; com vírgula separando colunas, todo número quebra a
- *    linha em duas células.
+ *  - **Semicolon as the separator.** Excel in pt-BR uses the comma as the
+ *    DECIMAL separator; with commas between columns, every number splits the
+ *    row into two cells.
  *
- *  - **Neutralização de fórmula (CSV injection).** Célula iniciada por `=`,
- *    `+`, `-`, `@`, tab ou CR é interpretada como fórmula pelo Excel e pelo
- *    Sheets. Como o conteúdo vem de campos que o usuário digita (nome de
- *    material, motivo de ajuste), um `=HYPERLINK(...)` gravado no cadastro
- *    executaria na máquina de quem abrisse a planilha. O apóstrofo à frente
- *    força a leitura como texto.
+ *  - **Formula neutralization (CSV injection).** A cell starting with `=`,
+ *    `+`, `-`, `@`, tab or CR is treated as a formula by Excel and Sheets.
+ *    Since the content comes from user-typed fields (material name, adjustment
+ *    reason), a `=HYPERLINK(...)` stored in the catalog would run on the
+ *    machine of whoever opened the sheet. The leading apostrophe forces it to
+ *    be read as text.
  */
 export function toCsv(headers: string[], rows: (string | number | null)[][]): string {
   const escape = (value: string | number | null): string => {
@@ -27,7 +27,7 @@ export function toCsv(headers: string[], rows: (string | number | null)[][]): st
   const lines = [headers.map(escape).join(";")];
   for (const row of rows) lines.push(row.map(escape).join(";"));
 
-  // BOM: sem ele o Excel no Windows abre o arquivo em ANSI e os acentos viram
-  // caracteres estranhos.
+  // BOM: without it Excel on Windows opens the file as ANSI and accented
+  // characters turn into mojibake.
   return `﻿${lines.join("\r\n")}\r\n`;
 }

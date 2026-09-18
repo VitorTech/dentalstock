@@ -1,6 +1,6 @@
 import ToothIcon from "@/shared/ui/ToothIcon";
 
-/** Rodapé padrão do sistema, presente em todas as telas. */
+/** The system's standard footer, present on every screen. */
 export default function SiteFooter() {
   const year = new Date().getFullYear();
   return (

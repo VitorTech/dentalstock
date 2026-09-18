@@ -1,4 +1,4 @@
-/** Adaptador de entrada: /api/stock/movements — extrato do estoque. */
+/** Inbound adapter: /api/stock/movements — extrato do estoque. */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";

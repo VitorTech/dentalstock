@@ -1,8 +1,8 @@
 /**
- * Portas do catálogo.
+ * Catalog ports.
  *
- * Convenção de segurança: todo método recebe `tenantId` explicitamente, e as
- * implementações devem aplicá-lo — não apenas aceitá-lo.
+ * Security convention: every method takes `tenantId` explicitly, and the
+ * implementations must apply it — not merely accept it.
  */
 import type { Instrument, Material, Procedure, Supplier } from "@/modules/catalog/domain";
 import type { Uuid } from "@/shared/domain";
@@ -48,7 +48,7 @@ export interface ProcedureRepository {
     category: string | null;
     description: string | null;
   }): Promise<Procedure>;
-  /** Clona o procedimento com toda a sua lista, numa transação. */
+  /** Clones the procedure with its whole item list, in one transaction. */
   duplicate(tenantId: Uuid, id: Uuid, newName: string): Promise<Procedure>;
   delete(tenantId: Uuid, id: Uuid): Promise<void>;
   addMaterial(tenantId: Uuid, procedureId: Uuid, materialId: Uuid, quantity: number): Promise<void>;

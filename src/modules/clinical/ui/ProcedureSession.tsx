@@ -25,12 +25,12 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 /**
- * Consulta em andamento: procedimentos marcados para finalizar juntos.
+ * Appointment in progress: procedures marked to be finalized together.
  *
- * Vive em contexto, e não em props, porque o card do procedimento está três
- * camadas abaixo da página (especialidade → lista → item). Passar a seleção
- * por props obrigaria as duas camadas do meio a conhecer um assunto que não é
- * delas.
+ * It lives in context rather than in props because the procedure card sits
+ * three layers below the page (specialty → list → item). Passing the selection
+ * down would force the two middle layers to know about a subject that is not
+ * theirs.
  */
 export function ProcedureSessionProvider({ children }: { children: React.ReactNode }) {
   const [entries, setEntries] = useState<SessionEntry[]>([]);
@@ -43,8 +43,8 @@ export function ProcedureSessionProvider({ children }: { children: React.ReactNo
   const toggle = useCallback((entry: SessionEntry) => {
     setEntries((prev) => {
       const exists = prev.some((e) => e.procedureId === entry.procedureId);
-      // Marcar de novo ATUALIZA em vez de duplicar: o dentista pode ajustar a
-      // quantidade depois de incluir o procedimento na consulta.
+      // Marking again UPDATES instead of duplicating: the dentist may adjust
+      // the quantity after adding the procedure to the appointment.
       if (exists) return prev.filter((e) => e.procedureId !== entry.procedureId);
       return [...prev, entry];
     });
@@ -73,10 +73,10 @@ type BarState =
   | { status: "error"; message: string };
 
 /**
- * Barra flutuante da consulta.
+ * Floating appointment bar.
  *
- * Só aparece com dois ou mais procedimentos marcados: com um só, o botão do
- * próprio card já resolve, e uma barra fixa na tela seria ruído.
+ * It only shows up with two or more procedures marked: with a single one the
+ * card's own button already does the job, and a fixed bar would be noise.
  */
 export function ProcedureSessionBar({
   canSeeCosts,
@@ -100,7 +100,7 @@ export function ProcedureSessionBar({
       entries.map((e) => ({ procedureId: e.procedureId, materials: e.materials }))
     );
 
-    // Estoque insuficiente e falha de rede já vêm no formato do estado da barra.
+    // Insufficient stock and network failure already match the bar's state shape.
     if (outcome.status !== "ok") {
       setState(outcome);
       return;

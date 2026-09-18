@@ -1,6 +1,6 @@
-/** Aritmética monetária compartilhada. */
+/** Shared monetary arithmetic. */
 
-/** Arredondamento para centavos, aplicado a todo resultado monetário. */
+/** Rounds to cents; applied to every monetary result. */
 export function toCents(value: number): number {
   return Math.round(value * 100) / 100;
 }

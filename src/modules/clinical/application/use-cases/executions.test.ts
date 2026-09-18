@@ -1,12 +1,12 @@
 /**
- * Testes de finalização e estorno.
+ * Finalization and reversal tests.
  *
- * Usa repositórios em memória em vez de mocks: as portas já são interfaces, e
- * uma implementação falsa completa deixa o teste verificar o EFEITO (o que foi
- * gravado) em vez de verificar chamadas. Nenhum banco sobe aqui.
+ * Uses in-memory repositories instead of mocks: the ports are already
+ * interfaces, and a complete fake lets the test check the EFFECT (what was
+ * written) rather than which calls happened. No database starts here.
  *
- * O caso central é o da consulta com dois procedimentos que disputam o mesmo
- * material — a regra que o saldo corrente da sessão existe para proteger.
+ * The central case is an appointment with two procedures competing for the
+ * same material — the rule the session's running balance exists to protect.
  */
 import { describe, expect, it } from "vitest";
 import type { MaterialRepository, ProcedureRepository } from "@/modules/catalog/application";
@@ -21,7 +21,7 @@ const TENANT = "clinica-1";
 
 const OUTRA = "clinica-2";
 
-const ator: AuthenticatedActor = {
+const actor: AuthenticatedActor = {
   userId: "u1",
   tenantId: TENANT,
   role: "MEMBER",
@@ -47,7 +47,7 @@ function material(over: Partial<Material> = {}): Material {
   };
 }
 
-function procedimento(over: Partial<Procedure> = {}): Procedure {
+function procedure(over: Partial<Procedure> = {}): Procedure {
   return {
     id: "p1",
     tenantId: TENANT,
@@ -60,24 +60,24 @@ function procedimento(over: Partial<Procedure> = {}): Procedure {
   };
 }
 
-class ProceduresEmMemoria implements Partial<ProcedureRepository> {
-  constructor(private readonly itens: Procedure[]) {}
+class InMemoryProcedures implements Partial<ProcedureRepository> {
+  constructor(private readonly items: Procedure[]) {}
 
   async findById(tenantId: Uuid, id: Uuid): Promise<Procedure | null> {
-    // Reproduz a garantia real: id de outra clínica simplesmente não existe.
-    return this.itens.find((p) => p.id === id && p.tenantId === tenantId) ?? null;
+    // Reproduces the real guarantee: an id from another clinic simply does not exist.
+    return this.items.find((p) => p.id === id && p.tenantId === tenantId) ?? null;
   }
 }
 
-class MaterialsEmMemoria implements Partial<MaterialRepository> {
-  constructor(private readonly itens: Material[]) {}
+class InMemoryMaterials implements Partial<MaterialRepository> {
+  constructor(private readonly items: Material[]) {}
 
   async findManyByIds(tenantId: Uuid, ids: Uuid[]): Promise<Material[]> {
-    return this.itens.filter((m) => m.tenantId === tenantId && ids.includes(m.id));
+    return this.items.filter((m) => m.tenantId === tenantId && ids.includes(m.id));
   }
 }
 
-class ExecucoesEmMemoria implements Partial<ProcedureExecutionRepository> {
+class InMemoryExecutions implements Partial<ProcedureExecutionRepository> {
   commits: {
     tenantId: Uuid;
     sessionId: Uuid | null;
@@ -109,22 +109,22 @@ class ExecucoesEmMemoria implements Partial<ProcedureExecutionRepository> {
 
 const secrets: SecretGenerator = { token: () => "sessao-fixa" };
 
-function montar(procedures: Procedure[], materials: Material[]) {
-  const execucoes = new ExecucoesEmMemoria();
+function build(procedures: Procedure[], materials: Material[]) {
+  const execucoes = new InMemoryExecutions();
   const uc = new FinalizeProcedureUseCase(
-    new ProceduresEmMemoria(procedures) as unknown as ProcedureRepository,
-    new MaterialsEmMemoria(materials) as unknown as MaterialRepository,
+    new InMemoryProcedures(procedures) as unknown as ProcedureRepository,
+    new InMemoryMaterials(materials) as unknown as MaterialRepository,
     execucoes as unknown as ProcedureExecutionRepository,
     secrets
   );
   return { uc, execucoes };
 }
 
-describe("FinalizeProcedureUseCase — um procedimento", () => {
-  it("baixa o material e não marca sessão", async () => {
-    const { uc, execucoes } = montar([procedimento()], [material({ stock: 10 })]);
+describe("FinalizeProcedureUseCase — single procedure", () => {
+  it("deducts the material and does not mark a session", async () => {
+    const { uc, execucoes } = build([procedure()], [material({ stock: 10 })]);
 
-    const r = await uc.execute(ator, {
+    const r = await uc.execute(actor, {
       procedureId: "p1",
       materials: [{ materialId: "m1", quantity: 3 }],
     });
@@ -133,24 +133,24 @@ describe("FinalizeProcedureUseCase — um procedimento", () => {
     expect(execucoes.commits).toHaveLength(1);
 
     const commit = execucoes.commits[0];
-    // Agrupador de um item só não informa nada — fica nulo de propósito.
+    // A grouper around a single item tells nobody anything — null on purpose.
     expect(commit.sessionId).toBeNull();
     expect(commit.userName).toBe("Dra. Marina");
     expect(commit.executions[0].deductions).toEqual([{ materialId: "m1", quantity: 3 }]);
   });
 
-  it("registra a autoria de quem finalizou", async () => {
-    const { uc, execucoes } = montar([procedimento()], [material()]);
-    await uc.execute(ator, { procedureId: "p1", materials: [{ materialId: "m1", quantity: 1 }] });
+  it("records the authorship of whoever finalized it", async () => {
+    const { uc, execucoes } = build([procedure()], [material()]);
+    await uc.execute(actor, { procedureId: "p1", materials: [{ materialId: "m1", quantity: 1 }] });
 
     expect(execucoes.commits[0].userId).toBe("u1");
     expect(execucoes.commits[0].userName).toBe("Dra. Marina");
   });
 
-  it("devolve as faltas e NÃO grava nada", async () => {
-    const { uc, execucoes } = montar([procedimento()], [material({ stock: 1 })]);
+  it("returns the shortages and writes NOTHING", async () => {
+    const { uc, execucoes } = build([procedure()], [material({ stock: 1 })]);
 
-    const r = await uc.execute(ator, {
+    const r = await uc.execute(actor, {
       procedureId: "p1",
       materials: [{ materialId: "m1", quantity: 5 }],
     });
@@ -164,25 +164,25 @@ describe("FinalizeProcedureUseCase — um procedimento", () => {
     expect(execucoes.commits).toHaveLength(0);
   });
 
-  it("recusa procedimento de outra clínica", async () => {
-    const { uc } = montar([procedimento({ tenantId: OUTRA })], [material()]);
+  it("rejects a procedure from another clinic", async () => {
+    const { uc } = build([procedure({ tenantId: OUTRA })], [material()]);
 
     await expect(
-      uc.execute(ator, { procedureId: "p1", materials: [{ materialId: "m1", quantity: 1 }] })
+      uc.execute(actor, { procedureId: "p1", materials: [{ materialId: "m1", quantity: 1 }] })
     ).rejects.toThrow(NotFoundError);
   });
 });
 
-describe("FinalizeProcedureUseCase — consulta com vários procedimentos", () => {
-  it("compartilha o saldo entre os procedimentos da mesma consulta", async () => {
-    // O material tem 5; cada procedimento pede 3. Isoladamente ambos passariam,
-    // mas somados excedem — é exatamente o que o saldo corrente protege.
-    const { uc, execucoes } = montar(
-      [procedimento({ id: "a" }), procedimento({ id: "b" })],
+describe("FinalizeProcedureUseCase — appointment with several procedures", () => {
+  it("shares the balance across procedures of the same appointment", async () => {
+    // The material has 5; each procedure asks for 3. On their own both would
+    // pass, but together they exceed it — exactly what the running balance guards.
+    const { uc, execucoes } = build(
+      [procedure({ id: "a" }), procedure({ id: "b" })],
       [material({ id: "m1", stock: 5 })]
     );
 
-    const r = await uc.execute(ator, {
+    const r = await uc.execute(actor, {
       procedures: [
         { procedureId: "a", materials: [{ materialId: "m1", quantity: 3 }] },
         { procedureId: "b", materials: [{ materialId: "m1", quantity: 3 }] },
@@ -191,22 +191,22 @@ describe("FinalizeProcedureUseCase — consulta com vários procedimentos", () =
 
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      // O segundo é quem acusa: já sobraram apenas 2.
+      // The second one is what flags it: only 2 are left by then.
       expect(r.shortages).toEqual([
         { materialId: "m1", name: "Material", requested: 3, available: 2, unit: "un" },
       ]);
     }
-    // Nada foi gravado — nem o primeiro, que caberia sozinho.
+    // Nothing was written — not even the first one, which would have fit alone.
     expect(execucoes.commits).toHaveLength(0);
   });
 
-  it("aceita quando a soma cabe no saldo", async () => {
-    const { uc, execucoes } = montar(
-      [procedimento({ id: "a" }), procedimento({ id: "b" })],
+  it("accepts when the sum fits in the balance", async () => {
+    const { uc, execucoes } = build(
+      [procedure({ id: "a" }), procedure({ id: "b" })],
       [material({ id: "m1", stock: 6 })]
     );
 
-    const r = await uc.execute(ator, {
+    const r = await uc.execute(actor, {
       procedures: [
         { procedureId: "a", materials: [{ materialId: "m1", quantity: 3 }] },
         { procedureId: "b", materials: [{ materialId: "m1", quantity: 3 }] },
@@ -214,39 +214,39 @@ describe("FinalizeProcedureUseCase — consulta com vários procedimentos", () =
     });
 
     expect(r.ok).toBe(true);
-    // Uma única transação com as duas execuções — não dois commits.
+    // A single transaction with both executions — not two commits.
     expect(execucoes.commits).toHaveLength(1);
     expect(execucoes.commits[0].executions).toHaveLength(2);
     expect(execucoes.commits[0].sessionId).toBe("sessao-fixa");
   });
 
-  it("mantém os registros separados, um por procedimento", async () => {
-    const { uc, execucoes } = montar(
+  it("keeps the records separate, one per procedure", async () => {
+    const { uc, execucoes } = build(
       [
-        procedimento({ id: "a", name: "Restauração", category: "Dentística" }),
-        procedimento({ id: "b", name: "Profilaxia", category: "Prevenção" }),
+        procedure({ id: "a", name: "Restauração", category: "Dentística" }),
+        procedure({ id: "b", name: "Profilaxia", category: "Prevenção" }),
       ],
       [material({ id: "m1", stock: 10 })]
     );
 
-    await uc.execute(ator, {
+    await uc.execute(actor, {
       procedures: [
         { procedureId: "a", materials: [{ materialId: "m1", quantity: 1 }] },
         { procedureId: "b", materials: [{ materialId: "m1", quantity: 1 }] },
       ],
     });
 
-    const nomes = execucoes.commits[0].executions.map((e) => e.procedureName);
-    expect(nomes).toEqual(["Restauração", "Profilaxia"]);
+    const names = execucoes.commits[0].executions.map((e) => e.procedureName);
+    expect(names).toEqual(["Restauração", "Profilaxia"]);
   });
 
-  it("soma o custo dos procedimentos da consulta", async () => {
-    const { uc } = montar(
-      [procedimento({ id: "a" }), procedimento({ id: "b" })],
+  it("adds up the cost of the appointment's procedures", async () => {
+    const { uc } = build(
+      [procedure({ id: "a" }), procedure({ id: "b" })],
       [material({ id: "m1", stock: 10, unitCost: 2.5 })]
     );
 
-    const r = await uc.execute(ator, {
+    const r = await uc.execute(actor, {
       procedures: [
         { procedureId: "a", materials: [{ materialId: "m1", quantity: 2 }] },
         { procedureId: "b", materials: [{ materialId: "m1", quantity: 4 }] },
@@ -257,9 +257,9 @@ describe("FinalizeProcedureUseCase — consulta com vários procedimentos", () =
     if (r.ok) expect(r.cost).toBe(15);
   });
 
-  it("deixa o custo nulo quando nenhum item tem preço", async () => {
-    const { uc } = montar([procedimento()], [material({ unitCost: null })]);
-    const r = await uc.execute(ator, {
+  it("leaves the cost null when no item has a price", async () => {
+    const { uc } = build([procedure()], [material({ unitCost: null })]);
+    const r = await uc.execute(actor, {
       procedureId: "p1",
       materials: [{ materialId: "m1", quantity: 1 }],
     });
@@ -269,9 +269,9 @@ describe("FinalizeProcedureUseCase — consulta com vários procedimentos", () =
   });
 });
 
-describe("FinalizeProcedureUseCase — validação do pedido", () => {
+describe("FinalizeProcedureUseCase — request validation", () => {
   const casos: [string, Record<string, unknown>][] = [
-    ["sem procedimento algum", { procedures: [] }],
+    ["sem procedure algum", { procedures: [] }],
     ["sem procedureId", { materials: [{ materialId: "m1", quantity: 1 }] }],
     ["sem materiais", { procedureId: "p1", materials: [] }],
     ["materiais não é lista", { procedureId: "p1", materials: "tudo" }],
@@ -284,15 +284,15 @@ describe("FinalizeProcedureUseCase — validação do pedido", () => {
   ];
 
   it.each(casos)("recusa pedido %s", async (_caso, corpo) => {
-    const { uc } = montar([procedimento()], [material()]);
-    await expect(uc.execute(ator, corpo)).rejects.toThrow(ValidationError);
+    const { uc } = build([procedure()], [material()]);
+    await expect(uc.execute(actor, corpo)).rejects.toThrow(ValidationError);
   });
 
-  it("recusa o mesmo procedimento enviado duas vezes", async () => {
-    const { uc } = montar([procedimento()], [material()]);
+  it("rejects the same procedure sent twice", async () => {
+    const { uc } = build([procedure()], [material()]);
 
     await expect(
-      uc.execute(ator, {
+      uc.execute(actor, {
         procedures: [
           { procedureId: "p1", materials: [{ materialId: "m1", quantity: 1 }] },
           { procedureId: "p1", materials: [{ materialId: "m1", quantity: 1 }] },
@@ -301,21 +301,21 @@ describe("FinalizeProcedureUseCase — validação do pedido", () => {
     ).rejects.toThrow(ValidationError);
   });
 
-  it("recusa mais procedimentos do que cabe numa consulta", async () => {
-    const { uc } = montar([procedimento()], [material()]);
+  it("rejects more procedures than an appointment can hold", async () => {
+    const { uc } = build([procedure()], [material()]);
     const demais = Array.from({ length: 21 }, (_, i) => ({
       procedureId: `p${i}`,
       materials: [{ materialId: "m1", quantity: 1 }],
     }));
 
-    await expect(uc.execute(ator, { procedures: demais })).rejects.toThrow(ValidationError);
+    await expect(uc.execute(actor, { procedures: demais })).rejects.toThrow(ValidationError);
   });
 
-  it("recusa lista de materiais absurdamente longa", async () => {
-    const { uc } = montar([procedimento()], [material()]);
-    const itens = Array.from({ length: 201 }, () => ({ materialId: "m1", quantity: 1 }));
+  it("rejects an absurdly long material list", async () => {
+    const { uc } = build([procedure()], [material()]);
+    const items = Array.from({ length: 201 }, () => ({ materialId: "m1", quantity: 1 }));
 
-    await expect(uc.execute(ator, { procedureId: "p1", materials: itens })).rejects.toThrow(
+    await expect(uc.execute(actor, { procedureId: "p1", materials: items })).rejects.toThrow(
       ValidationError
     );
   });
@@ -323,7 +323,7 @@ describe("FinalizeProcedureUseCase — validação do pedido", () => {
 
 describe("ReverseExecutionUseCase", () => {
   function montarEstorno(execucao: ProcedureExecution | null) {
-    const repo = new ExecucoesEmMemoria();
+    const repo = new InMemoryExecutions();
     if (execucao) repo.registros.set(execucao.id, execucao);
     const uc = new ReverseExecutionUseCase(repo as unknown as ProcedureExecutionRepository);
     return { uc, repo };
@@ -346,23 +346,23 @@ describe("ReverseExecutionUseCase", () => {
     ],
   };
 
-  it("devolve apenas os materiais e registra o autor", async () => {
+  it("returns only the materials and records the author", async () => {
     const { uc, repo } = montarEstorno(base);
-    await uc.execute(ator, "e1");
+    await uc.execute(actor, "e1");
 
     expect(repo.estornos).toEqual([
       { executionId: "e1", returns: [{ materialId: "m1", quantity: 2 }] },
     ]);
   });
 
-  it("recusa estornar registro inexistente", async () => {
+  it("refuses to reverse a nonexistent record", async () => {
     const { uc } = montarEstorno(null);
-    await expect(uc.execute(ator, "fantasma")).rejects.toThrow(NotFoundError);
+    await expect(uc.execute(actor, "fantasma")).rejects.toThrow(NotFoundError);
   });
 
-  it("recusa estorno duplicado e não chama o repositório", async () => {
+  it("refuses a duplicate reversal and never calls the repository", async () => {
     const { uc, repo } = montarEstorno({ ...base, reversedAt: new Date() });
-    await expect(uc.execute(ator, "e1")).rejects.toThrow();
+    await expect(uc.execute(actor, "e1")).rejects.toThrow();
     expect(repo.estornos).toHaveLength(0);
   });
 });

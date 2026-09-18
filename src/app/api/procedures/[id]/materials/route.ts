@@ -1,4 +1,4 @@
-/** Adaptador de entrada: /api/procedures/[id]/materials */
+/** Inbound adapter: /api/procedures/[id]/materials */
 import { NextResponse } from "next/server";
 import { container } from "@/server/container";
 import { route } from "@/server/http/route";
@@ -17,7 +17,7 @@ export const POST = route("catalogManager", async ({ req, params, actor }) => {
     { materialId: body.materialId, quantity: body.quantity }
   );
 
-  // Devolve o vínculo recém-criado, formato que a interface já consome.
+  // Returns the freshly created link, in the shape the interface already uses.
   const created = procedure?.materials.find((pm) => pm.materialId === body.materialId);
   return NextResponse.json(created ?? {}, { status: 201 });
 });

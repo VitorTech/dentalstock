@@ -1,16 +1,16 @@
 /**
- * Portas técnicas compartilhadas.
+ * Shared technical ports.
  *
- * Relógio e geração de segredos são injetáveis para que regras temporais e
- * identificadores sejam determinísticos nos testes.
+ * The clock and secret generation are injectable so that time-based rules and
+ * identifiers are deterministic in tests.
  */
 
-/** Relógio injetável — deixa as regras temporais testáveis. */
+/** Injectable clock — makes time-based rules testable. */
 export interface Clock {
   now(): Date;
 }
 
-/** Geração de segredos aleatórios (identificador de sessão, nonces). */
+/** Random secret generation (session identifiers, nonces). */
 export interface SecretGenerator {
   token(bytes?: number): string;
 }

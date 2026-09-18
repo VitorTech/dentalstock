@@ -1,9 +1,9 @@
 /**
- * Testes de login, com foco no limite de tentativas.
+ * Login tests, focused on the attempt limit.
  *
- * Portas implementadas em memória, como nos demais testes: verifica-se o
- * EFEITO (bloqueou, contou, zerou) e não quais métodos foram chamados. O
- * relógio também é uma porta, então "quinze minutos depois" é instantâneo.
+ * Ports implemented in memory, as in the other tests: they check the EFFECT
+ * (blocked, counted, reset) rather than which methods were called. The clock
+ * is a port too, so "fifteen minutes later" is instantaneous.
  */
 import { describe, expect, it } from "vitest";
 import type { UserCredentials } from "@/modules/identity/domain";
@@ -27,35 +27,35 @@ import type {
 import { LoginUseCase } from "./auth";
 
 const EMAIL = "dra@clinica.com";
-const SENHA = "SenhaCorreta123";
+const PASSWORD = "SenhaCorreta123";
 const IP = "203.0.113.7";
-const AGORA = new Date("2026-09-17T09:00:00.000Z");
+const NOW = new Date("2026-09-17T09:00:00.000Z");
 
-const usuario: UserCredentials = {
+const user: UserCredentials = {
   id: "u1",
   tenantId: "t1",
   email: EMAIL,
   name: "Dra. Marina",
   role: "MEMBER",
-  passwordHash: `hash:${SENHA}`,
+  passwordHash: `hash:${PASSWORD}`,
 };
 
-class UsersEmMemoria implements Partial<UserRepository> {
+class InMemoryUsers implements Partial<UserRepository> {
   async findByEmail(email: string): Promise<UserCredentials | null> {
-    return email === usuario.email ? usuario : null;
+    return email === user.email ? user : null;
   }
 }
 
-class SessionsEmMemoria implements Partial<SessionRepository> {
-  readonly criadas: { userId: Uuid; tokenId: string }[] = [];
+class InMemorySessions implements Partial<SessionRepository> {
+  readonly created: { userId: Uuid; tokenId: string }[] = [];
 
   async create(data: { userId: Uuid; tokenId: string; expiresAt: Date }): Promise<void> {
-    this.criadas.push({ userId: data.userId, tokenId: data.tokenId });
+    this.created.push({ userId: data.userId, tokenId: data.tokenId });
   }
 }
 
-/** Hash de brinquedo: o algoritmo real é assunto do adaptador, não desta regra. */
-class HasherFalso implements PasswordHasher {
+/** Toy hash: the real algorithm is the adapter's business, not this rule's. */
+class FakeHasher implements PasswordHasher {
   async hash(plain: string): Promise<string> {
     return `hash:${plain}`;
   }
@@ -64,16 +64,16 @@ class HasherFalso implements PasswordHasher {
   }
 }
 
-class TokensFalsos implements TokenService {
+class FakeTokens implements TokenService {
   async issue(claims: AccessTokenClaims): Promise<IssuedToken> {
-    return { token: `token-${claims.sub}`, expiresAt: new Date(AGORA.getTime() + 86_400_000) };
+    return { token: `token-${claims.sub}`, expiresAt: new Date(NOW.getTime() + 86_400_000) };
   }
   async verify(): Promise<AccessTokenClaims | null> {
     return null;
   }
 }
 
-class ThrottleEmMemoria implements LoginThrottleRepository {
+class InMemoryThrottle implements LoginThrottleRepository {
   private readonly estados = new Map<string, LoginAttemptState>();
 
   async find(key: string): Promise<LoginAttemptState | null> {
@@ -85,55 +85,55 @@ class ThrottleEmMemoria implements LoginThrottleRepository {
   async clear(key: string): Promise<void> {
     this.estados.delete(key);
   }
-  chaves(): string[] {
+  keys(): string[] {
     return [...this.estados.keys()].sort();
   }
-  falhas(key: string): number {
+  failures(key: string): number {
     return this.estados.get(key)?.failures ?? 0;
   }
 }
 
-/** Relógio controlado: avança quando o teste manda. */
-class RelogioFalso implements Clock {
-  constructor(private instante: Date) {}
+/** Controlled clock: it advances when the test says so. */
+class FakeClock implements Clock {
+  constructor(private instant: Date) {}
   now(): Date {
-    return this.instante;
+    return this.instant;
   }
-  avancar(ms: number): void {
-    this.instante = new Date(this.instante.getTime() + ms);
+  advance(ms: number): void {
+    this.instant = new Date(this.instant.getTime() + ms);
   }
 }
 
-function montar() {
-  const throttle = new ThrottleEmMemoria();
-  const sessions = new SessionsEmMemoria();
-  const clock = new RelogioFalso(AGORA);
+function build() {
+  const throttle = new InMemoryThrottle();
+  const sessions = new InMemorySessions();
+  const clock = new FakeClock(NOW);
   const secrets: SecretGenerator = { token: () => "sessao-1" };
 
   const login = new LoginUseCase(
-    new UsersEmMemoria() as unknown as UserRepository,
+    new InMemoryUsers() as unknown as UserRepository,
     sessions as unknown as SessionRepository,
-    new HasherFalso(),
-    new TokensFalsos(),
+    new FakeHasher(),
+    new FakeTokens(),
     secrets,
     clock,
     throttle
   );
 
-  // Sequencial de propósito: é assim que uma pessoa (e um script de força
-  // bruta) tenta. O comportamento sob rajada simultânea está em teste próprio.
-  const errar = async (vezes: number, ipAddress: string | null = IP) => {
-    for (let i = 0; i < vezes; i++) {
+  // Sequential on purpose: that is how a person (and a brute-force script)
+  // tries. Concurrent bursts have their own test below.
+  const failLogin = async (times: number, ipAddress: string | null = IP) => {
+    for (let i = 0; i < times; i++) {
       await login.execute({ email: EMAIL, password: "senha-errada", ipAddress }).catch((e) => e);
     }
   };
 
-  return { login, throttle, sessions, clock, errar };
+  return { login, throttle, sessions, clock, failLogin };
 }
 
-/** Erra a senha em série, parando assim que o bloqueio aparece. */
-async function errarAte(login: LoginUseCase, vezes: number) {
-  for (let i = 0; i < vezes; i++) {
+/** Fails the password in series, stopping as soon as the block appears. */
+async function failUntilBlocked(login: LoginUseCase, times: number) {
+  for (let i = 0; i < times; i++) {
     const erro = await login
       .execute({ email: EMAIL, password: "senha-errada", ipAddress: IP })
       .catch((e) => e);
@@ -142,116 +142,116 @@ async function errarAte(login: LoginUseCase, vezes: number) {
 }
 
 describe("LoginUseCase", () => {
-  it("credencial correta autentica e cria a sessão", async () => {
-    const { login, sessions } = montar();
+  it("valid credentials authenticate and create the session", async () => {
+    const { login, sessions } = build();
 
-    const resultado = await login.execute({ email: EMAIL, password: SENHA, ipAddress: IP });
+    const result = await login.execute({ email: EMAIL, password: PASSWORD, ipAddress: IP });
 
-    expect(resultado.actor).toMatchObject({ userId: "u1", tenantId: "t1", role: "MEMBER" });
-    expect(sessions.criadas).toHaveLength(1);
+    expect(result.actor).toMatchObject({ userId: "u1", tenantId: "t1", role: "MEMBER" });
+    expect(sessions.created).toHaveLength(1);
   });
 
-  it("conta a falha nas duas chaves: conta e origem", async () => {
-    const { throttle, errar } = montar();
+  it("counts the failure against both keys: account and origin", async () => {
+    const { throttle, failLogin } = build();
 
-    await errar(1);
+    await failLogin(1);
 
-    expect(throttle.chaves()).toEqual([`ip:${IP}`, `user:${EMAIL}`]);
-    expect(throttle.falhas(`user:${EMAIL}`)).toBe(1);
+    expect(throttle.keys()).toEqual([`ip:${IP}`, `user:${EMAIL}`]);
+    expect(throttle.failures(`user:${EMAIL}`)).toBe(1);
   });
 
-  it("bloqueia a conta depois do limite — mesmo com a senha certa", async () => {
-    const { login, errar } = montar();
+  it("blocks the account past the limit — even with the right password", async () => {
+    const { login, failLogin } = build();
 
-    await errar(LOGIN_MAX_FAILURES_PER_ACCOUNT);
+    await failLogin(LOGIN_MAX_FAILURES_PER_ACCOUNT);
 
     const erro = await login
-      .execute({ email: EMAIL, password: SENHA, ipAddress: IP })
+      .execute({ email: EMAIL, password: PASSWORD, ipAddress: IP })
       .catch((e) => e);
 
     expect(erro).toBeInstanceOf(TooManyRequestsError);
     expect(erro.retryAfterSeconds).toBeGreaterThan(0);
-    // A mensagem não diz se o e-mail existe nem qual limite estourou.
+    // The message says neither whether the e-mail exists nor which limit was hit.
     expect(erro.message).not.toContain(EMAIL);
   });
 
-  it("trocar de IP não contorna o limite da conta", async () => {
-    const { login, errar } = montar();
+  it("switching IPs does not bypass the account limit", async () => {
+    const { login, failLogin } = build();
 
-    await errar(LOGIN_MAX_FAILURES_PER_ACCOUNT);
+    await failLogin(LOGIN_MAX_FAILURES_PER_ACCOUNT);
 
     const erro = await login
-      .execute({ email: EMAIL, password: SENHA, ipAddress: "198.51.100.9" })
+      .execute({ email: EMAIL, password: PASSWORD, ipAddress: "198.51.100.9" })
       .catch((e) => e);
 
     expect(erro).toBeInstanceOf(TooManyRequestsError);
   });
 
-  it("o bloqueio expira: passados os quinze minutos, o login volta a funcionar", async () => {
-    const { login, clock, errar } = montar();
+  it("the block expires: after fifteen minutes, login works again", async () => {
+    const { login, clock, failLogin } = build();
 
-    await errar(LOGIN_MAX_FAILURES_PER_ACCOUNT);
-    clock.avancar(LOGIN_BLOCK_MS + 1000);
+    await failLogin(LOGIN_MAX_FAILURES_PER_ACCOUNT);
+    clock.advance(LOGIN_BLOCK_MS + 1000);
 
-    const resultado = await login.execute({ email: EMAIL, password: SENHA, ipAddress: IP });
+    const result = await login.execute({ email: EMAIL, password: PASSWORD, ipAddress: IP });
 
-    expect(resultado.actor.userId).toBe("u1");
+    expect(result.actor.userId).toBe("u1");
   });
 
-  it("acertar a senha zera os contadores da tentativa", async () => {
-    const { login, throttle, errar } = montar();
+  it("getting the password right clears the attempt counters", async () => {
+    const { login, throttle, failLogin } = build();
 
-    await errar(3);
-    await login.execute({ email: EMAIL, password: SENHA, ipAddress: IP });
+    await failLogin(3);
+    await login.execute({ email: EMAIL, password: PASSWORD, ipAddress: IP });
 
-    expect(throttle.chaves()).toEqual([]);
+    expect(throttle.keys()).toEqual([]);
   });
 
-  it("e-mail inexistente também conta — é o que um ataque usa para sondar contas", async () => {
-    const { login, throttle } = montar();
+  it("a nonexistent e-mail counts too — that is how an attack probes accounts", async () => {
+    const { login, throttle } = build();
 
     await login
       .execute({ email: "ninguem@clinica.com", password: "x".repeat(10), ipAddress: IP })
       .catch((e) => expect(e).toBeInstanceOf(UnauthorizedError));
 
-    expect(throttle.falhas("user:ninguem@clinica.com")).toBe(1);
-    expect(throttle.falhas(`ip:${IP}`)).toBe(1);
+    expect(throttle.failures("user:ninguem@clinica.com")).toBe(1);
+    expect(throttle.failures(`ip:${IP}`)).toBe(1);
   });
 
-  it("sem IP conhecido, o limite por conta continua valendo", async () => {
-    const { login, throttle, errar } = montar();
+  it("with no known IP, the per-account limit still applies", async () => {
+    const { login, throttle, failLogin } = build();
 
-    await errar(LOGIN_MAX_FAILURES_PER_ACCOUNT, null);
+    await failLogin(LOGIN_MAX_FAILURES_PER_ACCOUNT, null);
 
-    expect(throttle.chaves()).toEqual([`user:${EMAIL}`]);
+    expect(throttle.keys()).toEqual([`user:${EMAIL}`]);
     await expect(
-      login.execute({ email: EMAIL, password: SENHA, ipAddress: null })
+      login.execute({ email: EMAIL, password: PASSWORD, ipAddress: null })
     ).rejects.toBeInstanceOf(TooManyRequestsError);
   });
 
-  it("rajada simultânea ainda acaba bloqueada", async () => {
-    // Ler-decidir-gravar não é atômico: tentativas disparadas ao mesmo tempo
-    // leem o mesmo contador e algumas se perdem. O limite continua valendo —
-    // só não é exato no instante da rajada. Aceitável porque o que se combate
-    // é a insistência ao longo de minutos, e o custo da alternativa (bloqueio
-    // de linha a cada tentativa de login) seria pago por todo mundo.
-    const { login, throttle } = montar();
+  it("a concurrent burst still ends up blocked", async () => {
+    // Read-decide-write is not atomic: attempts fired at the same instant read
+    // the same counter and some are lost. The limit still holds — it is only
+    // inexact during the burst. Acceptable because what we fight is persistence
+    // over minutes, and the alternative (row locking on every login attempt)
+    // would be paid for by everyone.
+    const { login, throttle } = build();
 
     await Promise.all(
       Array.from({ length: LOGIN_MAX_FAILURES_PER_ACCOUNT * 3, }, () =>
         login.execute({ email: EMAIL, password: "senha-errada", ipAddress: IP }).catch((e) => e)
       )
     );
-    // Uma segunda rodada sequencial fecha o cerco mesmo no pior caso.
-    await errarAte(login, LOGIN_MAX_FAILURES_PER_ACCOUNT);
+    // A second sequential round closes the net even in the worst case.
+    await failUntilBlocked(login, LOGIN_MAX_FAILURES_PER_ACCOUNT);
 
-    expect(throttle.falhas(`user:${EMAIL}`)).toBeGreaterThan(0);
+    expect(throttle.failures(`user:${EMAIL}`)).toBeGreaterThan(0);
     await expect(
-      login.execute({ email: EMAIL, password: SENHA, ipAddress: IP })
+      login.execute({ email: EMAIL, password: PASSWORD, ipAddress: IP })
     ).rejects.toBeInstanceOf(TooManyRequestsError);
   });
 
-  it("o limite por IP é mais alto que o da conta: uma clínica inteira sai por um endereço", () => {
+  it("the per-IP limit is higher than the account one: a whole clinic shares an address", () => {
     expect(LOGIN_MAX_FAILURES_PER_IP).toBeGreaterThan(LOGIN_MAX_FAILURES_PER_ACCOUNT);
   });
 });

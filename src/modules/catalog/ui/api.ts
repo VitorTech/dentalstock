@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Operações de catálogo disponíveis às telas.
+ * Catalog operations available to the screens.
  *
- * Toda URL de `/api/...` do catálogo mora aqui — nenhuma tela monta caminho
- * nem corpo de requisição à mão. Ganho concreto: renomear um endpoint é uma
- * edição neste arquivo, e não uma caçada por `fetch(` pelo projeto inteiro.
+ * Every `/api/...` URL of the catalog lives here — no screen builds a path or
+ * a request body by hand. Concrete gain: renaming an endpoint is one edit in
+ * this file, not a hunt for `fetch(` across the project.
  *
- * Leituras usam `apiGet` (degradam para lista vazia); escritas usam `apiSend`
- * (lançam `ApiError` com a mensagem do servidor).
+ * Reads use `apiGet` (degrading to an empty list); writes use `apiSend`
+ * (throwing `ApiError` with the server message).
  */
 import { apiGet, apiSend } from "@/shared/ui/api-client";
 import type {
@@ -20,7 +20,7 @@ import type {
   Supplier,
 } from "@/modules/catalog/domain";
 
-// ── Materiais ──────────────────────────────────────────────────────────────
+// ── Materials ──────────────────────────────────────────────────────────────
 
 export interface MaterialInput {
   name: string;
@@ -34,7 +34,7 @@ export interface MaterialInput {
   expiresAt?: string | null;
 }
 
-/** Campos editáveis de um material já cadastrado. */
+/** Editable fields of an already registered material. */
 export interface MaterialPatch {
   minStock?: number;
   supplierId?: string | null;
@@ -50,7 +50,7 @@ export const createMaterial = (input: MaterialInput) =>
 export const updateMaterial = (id: string, patch: MaterialPatch) =>
   apiSend<Material>(`/api/materials/${id}`, "PATCH", patch);
 
-// ── Instrumentais ──────────────────────────────────────────────────────────
+// ── Instruments ────────────────────────────────────────────────────────────
 
 export interface InstrumentInput {
   name: string;
@@ -67,7 +67,7 @@ export const createInstrument = (input: InstrumentInput) =>
 export const updateInstrument = (id: string, patch: { stock?: number }) =>
   apiSend<Instrument>(`/api/instruments/${id}`, "PATCH", patch);
 
-// ── Fornecedores ───────────────────────────────────────────────────────────
+// ── Suppliers ──────────────────────────────────────────────────────────────
 
 export interface SupplierInput {
   name: string;
@@ -86,7 +86,7 @@ export const updateSupplier = (id: string, patch: Partial<SupplierInput>) =>
 
 export const deleteSupplier = (id: string) => apiSend(`/api/suppliers/${id}`, "DELETE");
 
-// ── Procedimentos ──────────────────────────────────────────────────────────
+// ── Procedures ─────────────────────────────────────────────────────────────
 
 export interface ProcedureInput {
   name: string;
@@ -108,7 +108,7 @@ export const deleteProcedure = (id: string) => apiSend(`/api/procedures/${id}`, 
 export const duplicateProcedure = (id: string) =>
   apiSend<Procedure>(`/api/procedures/${id}/duplicate`, "POST", {});
 
-// ── Composição do procedimento ─────────────────────────────────────────────
+// ── Procedure composition ──────────────────────────────────────────────────
 
 export const addProcedureMaterial = (procedureId: string, materialId: string, quantity: number) =>
   apiSend<ProcedureMaterial>(`/api/procedures/${procedureId}/materials`, "POST", {

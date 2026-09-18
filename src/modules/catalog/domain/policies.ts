@@ -1,16 +1,16 @@
 /**
- * Políticas de nível de estoque de um item do catálogo.
+ * Stock level policies for a catalog item.
  *
- * Moram no catálogo porque `stock` e `minStock` são atributos do próprio item:
- * assim qualquer módulo posterior — e a interface do catálogo — usa a mesma
- * regra, sem reescrever `stock <= minStock` em cada tela.
+ * They live in the catalog because `stock` and `minStock` are attributes of
+ * the item itself: this way any later module — and the catalog UI — uses the
+ * same rule, instead of rewriting `stock <= minStock` on each screen.
  */
 import type { Instrument, Material } from "./entities";
 
 /**
- * Só materiais têm estoque mínimo: são eles que se consomem e precisam de
- * reposição. Instrumental é reutilizável, então não entra nesta regra — e a
- * assinatura impede que volte a entrar por descuido.
+ * Only materials have a minimum: they are the ones consumed and restocked.
+ * Instruments are reusable, so they are out of this rule — and the signature
+ * keeps them from sneaking back in by accident.
  */
 export function isLowStock(item: Pick<Material, "stock" | "minStock">): boolean {
   return item.stock <= item.minStock;

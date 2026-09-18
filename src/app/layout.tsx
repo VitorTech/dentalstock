@@ -20,15 +20,15 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
-  // A tela do celular fica ao lado da cadeira: `viewport-fit` evita que a
-  // barra inferior do iPhone cubra o botão de finalizar.
+  // The phone screen sits next to the dental chair: `viewport-fit` keeps the
+  // iPhone's bottom bar from covering the finalize button.
   viewportFit: "cover",
 };
 
 /**
- * Preferência do sistema operacional, resolvida antes da primeira pintura para
- * não haver flash de tema errado. O tema da clínica é aplicado depois, só nas
- * áreas autenticadas (ver `TenantTheme`).
+ * The operating system preference, resolved before the first paint so there is
+ * no flash of the wrong theme. The clinic's own theme is applied later, only in
+ * authenticated areas (see `TenantTheme`).
  */
 const SYSTEM_THEME_SCRIPT = `
 (function(){
@@ -39,12 +39,13 @@ const SYSTEM_THEME_SCRIPT = `
 })();`;
 
 /**
- * Layout raiz — deliberadamente SEM leitura de sessão.
+ * Root layout — deliberately WITHOUT reading the session.
  *
- * Ler o cookie aqui obrigaria o Next a renderizar TODA página sob demanda,
- * inclusive a pública, que não depende de quem está logado. O efeito apareceria
- * direto no TTFB, e portanto no LCP. A personalização por clínica (tema e cor)
- * vive nos layouts autenticados, que já são dinâmicos.
+ * Reading the cookie here would force Next to render EVERY page on demand,
+ * including the public one, which does not depend on who is signed in. The
+ * effect would show up straight in TTFB, and therefore in LCP. Per-clinic
+ * customization (theme and color) lives in the authenticated layouts, which
+ * are dynamic anyway.
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

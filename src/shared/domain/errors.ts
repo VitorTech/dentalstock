@@ -1,10 +1,13 @@
 /**
- * Erros de domínio.
+ * Domain errors.
  *
- * Camada de domínio: NÃO conhece HTTP, Prisma, Next ou qualquer biblioteca.
- * Os adaptadores de entrada traduzem estes erros para o protocolo deles
- * (ex.: NotFoundError -> HTTP 404). Assim a regra de negócio permanece
- * independente de framework, conforme a Regra de Dependência.
+ * Domain layer: it knows nothing about HTTP, Prisma, Next or any library.
+ * Inbound adapters translate these errors into their own protocol (e.g.
+ * NotFoundError -> HTTP 404), which is what keeps business rules independent
+ * of the framework, as required by the Dependency Rule.
+ *
+ * Messages stay in Portuguese on purpose: they are shown to the end user, and
+ * the product is sold to Brazilian dental clinics.
  */
 
 export abstract class DomainError extends Error {
@@ -16,19 +19,19 @@ export abstract class DomainError extends Error {
   }
 }
 
-/** Dados de entrada inválidos segundo as regras de negócio. */
+/** Input rejected by the business rules. */
 export class ValidationError extends DomainError {
   readonly code = "VALIDATION_ERROR";
   constructor(
     message: string,
-    /** Campo que falhou, quando aplicável — útil para o formulário destacar. */
+    /** Offending field, when there is one — lets the form highlight it. */
     readonly field?: string
   ) {
     super(message);
   }
 }
 
-/** Recurso inexistente ou fora do escopo do solicitante. */
+/** Resource that does not exist, or lies outside the caller's scope. */
 export class NotFoundError extends DomainError {
   readonly code = "NOT_FOUND";
   constructor(what = "Recurso não encontrado.") {
@@ -36,12 +39,12 @@ export class NotFoundError extends DomainError {
   }
 }
 
-/** Conflito com o estado atual (ex.: e-mail já cadastrado). */
+/** Conflicts with the current state (e.g. e-mail already taken). */
 export class ConflictError extends DomainError {
   readonly code = "CONFLICT";
 }
 
-/** Falta de credencial válida. */
+/** Missing or invalid credentials. */
 export class UnauthorizedError extends DomainError {
   readonly code = "UNAUTHORIZED";
   constructor(message = "Não autenticado.") {
@@ -49,7 +52,7 @@ export class UnauthorizedError extends DomainError {
   }
 }
 
-/** Credencial válida, mas sem permissão para a operação. */
+/** Valid credentials, but not allowed to perform the operation. */
 export class ForbiddenError extends DomainError {
   readonly code = "FORBIDDEN";
   constructor(message = "Acesso negado.") {
@@ -57,25 +60,17 @@ export class ForbiddenError extends DomainError {
   }
 }
 
-/** Assinatura inativa: o acesso depende de pagamento. */
-export class PaymentRequiredError extends DomainError {
-  readonly code = "SUBSCRIPTION_REQUIRED";
-  constructor(message = "Assinatura necessária.") {
-    super(message);
-  }
-}
-
-/** Regra de negócio violada que não se encaixa nas anteriores. */
+/** Business rule violation that does not fit the cases above. */
 export class BusinessRuleError extends DomainError {
   readonly code = "BUSINESS_RULE";
 }
 
 /**
- * Excesso de tentativas em uma janela de tempo.
+ * Too many attempts within a time window.
  *
- * Carrega quanto falta para liberar: o adaptador HTTP transforma isso no
- * cabeçalho `Retry-After`, e a tela consegue dizer ao usuário quanto esperar
- * em vez de só repetir "tente de novo".
+ * Carries how long is left: the HTTP adapter turns it into the `Retry-After`
+ * header, so the screen can tell the user how long to wait instead of just
+ * repeating "try again".
  */
 export class TooManyRequestsError extends DomainError {
   readonly code = "TOO_MANY_REQUESTS";
@@ -85,20 +80,4 @@ export class TooManyRequestsError extends DomainError {
   ) {
     super(message);
   }
-}
-
-/** Falha em serviço externo (gateway de pagamento, etc.). */
-export class ExternalServiceError extends DomainError {
-  readonly code = "EXTERNAL_SERVICE";
-}
-
-/**
- * Recurso indisponível por configuração ausente, não por erro do solicitante.
- *
- * Distinto de ExternalServiceError de propósito: "pagamentos não configurados
- * nesta instalação" é um estado do ambiente que a tela precisa saber
- * diferenciar de "o gateway falhou agora".
- */
-export class ServiceUnavailableError extends DomainError {
-  readonly code = "SERVICE_UNAVAILABLE";
 }

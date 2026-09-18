@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-/** Aplicação privada: nada aqui deve ser indexado. */
+/** Private application: nothing here should be indexed. */
 export default function robots(): MetadataRoute.Robots {
   return { rules: { userAgent: "*", disallow: "/" } };
 }

@@ -1,11 +1,8 @@
 /**
- * Cria um usuário dentro de uma clínica (tenant) que já existe.
- * É o que destrava o primeiro acesso em produção, já que a migração de
- * multi-tenancy cria a "Clínica Principal" com os dados, mas nenhum usuário.
+ * Creates a user inside an existing clinic (tenant).
  *
- * Uso:
- *   npm run user:create -- <slug-da-clinica> <email> <senha> ["<Nome>"] [OWNER|MEMBER]
- *
+ * Usage:
+ *   npm run user:create -- <clinic-slug> <email> <password> ["<Name>"] [OWNER|MEMBER]
  */
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scryptSync } from "crypto";
@@ -22,13 +19,13 @@ async function main() {
 
   if (!slug || !emailRaw || !password) {
     console.error(
-      'Uso: npm run user:create -- <slug-da-clinica> <email> <senha> ["<Nome>"] [OWNER|MEMBER]'
+      'Usage: npm run user:create -- <clinic-slug> <email> <password> ["<Name>"] [OWNER|MEMBER]'
     );
     process.exit(1);
   }
 
   if (password.length < 8) {
-    console.error("A senha deve ter pelo menos 8 caracteres.");
+    console.error("The password must be at least 8 characters long.");
     process.exit(1);
   }
 
@@ -40,24 +37,24 @@ async function main() {
   });
 
   if (!tenant) {
-    const todas = await prisma.tenant.findMany({ select: { slug: true, name: true } });
-    console.error(`Clínica com slug "${slug}" não encontrada.`);
-    if (todas.length) {
-      console.error("Clínicas existentes:");
-      for (const t of todas) console.error(`  - ${t.slug}  (${t.name})`);
+    const all = await prisma.tenant.findMany({ select: { slug: true, name: true } });
+    console.error(`No clinic found with slug "${slug}".`);
+    if (all.length) {
+      console.error("Existing clinics:");
+      for (const t of all) console.error(`  - ${t.slug}  (${t.name})`);
     } else {
-      console.error("Nenhuma clínica cadastrada — use 'npm run tenant:create' primeiro.");
+      console.error("No clinic registered yet — run 'npm run tenant:create' first.");
     }
     process.exit(1);
   }
 
-  const jaExiste = await prisma.user.findUnique({ where: { email } });
-  if (jaExiste) {
-    console.error(`Já existe um usuário com o e-mail ${email}.`);
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    console.error(`A user with the e-mail ${email} already exists.`);
     process.exit(1);
   }
 
-  // Primeiro usuário da clínica vira OWNER por padrão.
+  // The clinic's first user becomes OWNER by default.
   const role = roleRaw?.toUpperCase() === "MEMBER" ? "MEMBER" : tenant._count.users === 0 ? "OWNER" : "MEMBER";
 
   await prisma.user.create({
