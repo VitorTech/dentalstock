@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useConfirm } from "@/shared/ui/ConfirmProvider";
 import type { Procedure } from "@/modules/catalog/domain";
 import {
@@ -11,6 +12,7 @@ import {
   updateProcedureInstrument,
   updateProcedureMaterial,
 } from "@/modules/catalog/ui/api";
+import { catalogKeys } from "@/modules/catalog/ui/queries";
 import { summarizeCost } from "@/modules/clinical/domain";
 
 /**
@@ -19,9 +21,17 @@ import { summarizeCost } from "@/modules/clinical/domain";
  * It takes all the API conversation out of the card: the component only
  * decides what to show, and the rules of "confirm before removing" and
  * "update before saving" live in one place.
+ *
+ * The list is kept in local state rather than read from the cache: a quantity
+ * stepper has to answer on the keystroke, and waiting for a round trip to
+ * redraw the number is what makes a form feel broken. The cache is told after
+ * the fact, so every other screen sees the new composition.
  */
 export function useProcedureComposition(procedure: Procedure) {
   const confirm = useConfirm();
+  const client = useQueryClient();
+  const refreshProcedures = () =>
+    client.invalidateQueries({ queryKey: catalogKeys.allProcedures });
   const [materials, setMaterials] = useState(procedure.materials);
   const [instruments, setInstruments] = useState(procedure.instruments);
 
@@ -53,6 +63,7 @@ export function useProcedureComposition(procedure: Procedure) {
       prev.map((pm) => (pm.id === procedureMaterialId ? { ...pm, quantity } : pm))
     );
     await updateProcedureMaterial(procedureMaterialId, quantity);
+    refreshProcedures();
   };
 
   const removeMaterial = async (procedureMaterialId: string) => {
@@ -68,6 +79,7 @@ export function useProcedureComposition(procedure: Procedure) {
     if (!ok) return;
     setMaterials((prev) => prev.filter((m) => m.id !== procedureMaterialId));
     await removeProcedureMaterial(procedureMaterialId);
+    refreshProcedures();
   };
 
   /** Returns `true` when the link was created — the caller closes the modal. */
@@ -75,6 +87,7 @@ export function useProcedureComposition(procedure: Procedure) {
     try {
       const created = await addProcedureMaterial(procedure.id, materialId, quantity);
       setMaterials((prev) => [...prev, created]);
+      refreshProcedures();
       return true;
     } catch {
       return false;
@@ -86,6 +99,7 @@ export function useProcedureComposition(procedure: Procedure) {
       prev.map((pi) => (pi.id === procedureInstrumentId ? { ...pi, quantity } : pi))
     );
     await updateProcedureInstrument(procedureInstrumentId, quantity);
+    refreshProcedures();
   };
 
   const removeInstrument = async (procedureInstrumentId: string) => {
@@ -101,12 +115,14 @@ export function useProcedureComposition(procedure: Procedure) {
     if (!ok) return;
     setInstruments((prev) => prev.filter((i) => i.id !== procedureInstrumentId));
     await removeProcedureInstrument(procedureInstrumentId);
+    refreshProcedures();
   };
 
   const addInstrument = async (instrumentId: string, quantity: number): Promise<boolean> => {
     try {
       const created = await addProcedureInstrument(procedure.id, instrumentId, quantity);
       setInstruments((prev) => [...prev, created]);
+      refreshProcedures();
       return true;
     } catch {
       return false;

@@ -9,13 +9,13 @@ import MaterialRow from "@/modules/catalog/ui/MaterialRow";
 import AddMaterialModal from "@/modules/catalog/ui/AddMaterialModal";
 import InstrumentRow from "@/modules/catalog/ui/InstrumentRow";
 import AddInstrumentModal from "@/modules/catalog/ui/AddInstrumentModal";
-import { useMe } from "@/modules/identity/ui/use-me";
+import { useMe } from "@/modules/identity/ui/queries";
 import type { Instrument, Material, Procedure } from "@/modules/catalog/domain";
 import { useProcedureSession } from "./ProcedureSession";
 import { useProcedureComposition } from "./internal/use-procedure-composition";
 import { useFinalizeProcedure } from "./internal/use-finalize-procedure";
 import FinalizePanel from "./internal/FinalizePanel";
-import { duplicateProcedure } from "@/modules/catalog/ui/api";
+import { useDuplicateProcedure } from "@/modules/catalog/ui/queries";
 
 /**
  * A procedure card: composition (materials and instruments), estimated cost
@@ -31,8 +31,6 @@ export default function ProcedureItem({
   allInstruments,
   expanded,
   onToggle,
-  onMaterialCreated,
-  onInstrumentCreated,
   onDelete,
   onDuplicated,
 }: {
@@ -41,8 +39,6 @@ export default function ProcedureItem({
   allInstruments: Instrument[];
   expanded: boolean;
   onToggle: () => void;
-  onMaterialCreated: (material: Material) => void;
-  onInstrumentCreated: (instrument: Instrument) => void;
   onDelete: () => Promise<void> | void;
   onDuplicated: (procedure: Procedure) => void;
 }) {
@@ -50,25 +46,15 @@ export default function ProcedureItem({
   const [showAddMaterial, setShowAddMaterial] = useState(false);
   const [showAddInstrument, setShowAddInstrument] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
   const confirm = useConfirm();
   const { canManage, canSeeCosts } = useMe();
   const session = useProcedureSession();
   const composition = useProcedureComposition(procedure);
   const { materials, instruments, cost } = composition;
 
-  const finalization = useFinalizeProcedure({
-    procedureId: procedure.id,
-    materials,
-    // The card shows each material's balance: adopt what the server returned.
-    onStockUpdated: (updated) =>
-      composition.setMaterials((prev) =>
-        prev.map((pm) => {
-          const material = updated.find((m) => m.id === pm.materialId);
-          return material ? { ...pm, material } : pm;
-        })
-      ),
-  });
+  // Finalizing deducts stock; the hook refreshes the cache, and the card
+  // receives the new balances through the procedures query.
+  const finalization = useFinalizeProcedure({ procedureId: procedure.id, materials });
 
   const inSession = session.has(procedure.id);
 
@@ -80,16 +66,12 @@ export default function ProcedureItem({
       estimatedCost: cost.known > 0 ? cost.total : null,
     });
 
-  const handleDuplicate = async () => {
-    setDuplicating(true);
-    try {
-      onDuplicated(await duplicateProcedure(procedure.id));
-    } catch {
-      // Nothing changes on screen: the list simply stays without the copy.
-    } finally {
-      setDuplicating(false);
-    }
-  };
+  // The copy only exists once the list has been refreshed, so the mutation
+  // invalidates first and the screen then opens the card it hands back. On
+  // failure nothing changes on screen: the list simply stays without the copy.
+  const duplication = useDuplicateProcedure(onDuplicated);
+  const duplicating = duplication.isPending;
+  const handleDuplicate = () => duplication.mutate(procedure.id);
 
   const handleDelete = async () => {
     const ok = await confirm({
@@ -293,7 +275,6 @@ export default function ProcedureItem({
           excludeIds={materials.map((m) => m.materialId)}
           onClose={() => setShowAddMaterial(false)}
           onAdd={handleAddMaterial}
-          onMaterialCreated={onMaterialCreated}
         />
       )}
 
@@ -303,7 +284,6 @@ export default function ProcedureItem({
           excludeIds={instruments.map((i) => i.instrumentId)}
           onClose={() => setShowAddInstrument(false)}
           onAdd={handleAddInstrument}
-          onInstrumentCreated={onInstrumentCreated}
         />
       )}
     </div>

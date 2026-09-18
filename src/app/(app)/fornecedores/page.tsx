@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Truck } from "lucide-react";
 import SiteHeader from "@/app/_shell/SiteHeader";
 import SearchBar from "@/shared/ui/SearchBar";
@@ -9,34 +9,25 @@ import { useConfirm } from "@/shared/ui/ConfirmProvider";
 import ErrorBanner from "@/shared/ui/ErrorBanner";
 import { ApiError } from "@/shared/ui/api-client";
 import {
-  deleteSupplier,
-  listMaterials,
-  listSuppliers,
-  updateMaterial,
-  updateSupplier,
-} from "@/modules/catalog/ui/api";
-import type { Material, Supplier } from "@/modules/catalog/domain";
+  useDeleteSupplier,
+  useMaterials,
+  useSuppliers,
+  useUpdateMaterial,
+  useUpdateSupplier,
+} from "@/modules/catalog/ui/queries";
+import type { Supplier } from "@/modules/catalog/domain";
 import CreateSupplierModal from "@/modules/catalog/ui/CreateSupplierModal";
 
 export default function FornecedoresPage() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
+  const { data: suppliers = [], isLoading: loading } = useSuppliers();
+  const { data: materials = [] } = useMaterials();
+  const updateSupplier = useUpdateSupplier();
+  const deleteSupplier = useDeleteSupplier();
+  const updateMaterial = useUpdateMaterial();
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const confirm = useConfirm();
-
-  const load = async () => {
-    const [sups, mats] = await Promise.all([listSuppliers(), listMaterials()]);
-    setSuppliers(sups);
-    setMaterials(mats);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    load();
-  }, []);
 
   const materialsBySupplier = useMemo(() => {
     const map = new Map<string, { id: string; name: string }[]>();
@@ -64,11 +55,10 @@ export default function FornecedoresPage() {
   const report = (e: unknown) =>
     setError(e instanceof ApiError ? e.message : "Não foi possível concluir a operação.");
 
-  const handleUpdate = async (id: string, data: Partial<Supplier>) => {
+  const handleUpdate = async (id: string, patch: Partial<Supplier>) => {
     setError(null);
     try {
-      const updated = await updateSupplier(id, data);
-      setSuppliers((prev) => prev.map((s) => (s.id === id ? updated : s)));
+      await updateSupplier.mutateAsync({ id, patch });
     } catch (e) {
       report(e);
     }
@@ -90,27 +80,19 @@ export default function FornecedoresPage() {
     if (!ok) return;
     setError(null);
     try {
-      await deleteSupplier(id);
-      setSuppliers((prev) => prev.filter((s) => s.id !== id));
-      // Linked materials lost their supplier (SetNull) — refresh the counts.
-      setMaterials((prev) => prev.map((m) => (m.supplierId === id ? { ...m, supplierId: null, supplier: null } : m)));
+      // The mutation also invalidates the materials: the ones linked to this
+      // supplier lost the link (SetNull in the schema).
+      await deleteSupplier.mutateAsync(id);
     } catch (e) {
       report(e);
     }
   };
 
-  const handleCreated = (supplier: Supplier) => {
-    setSuppliers((prev) => [...prev, supplier].sort((a, b) => a.name.localeCompare(b.name)));
-    setShowCreate(false);
-  };
-
-  // Links (supplierId != null) or unlinks (null) a material, updating local
-  // state so chips and counters react immediately.
+  // Links (supplierId != null) or unlinks (null) a material from a supplier.
   const handleLinkMaterial = async (materialId: string, supplierId: string | null) => {
     setError(null);
     try {
-      const updated = await updateMaterial(materialId, { supplierId });
-      setMaterials((prev) => prev.map((m) => (m.id === materialId ? updated : m)));
+      await updateMaterial.mutateAsync({ id: materialId, patch: { supplierId } });
     } catch (e) {
       report(e);
     }
@@ -184,7 +166,7 @@ export default function FornecedoresPage() {
       </section>
 
       {showCreate && (
-        <CreateSupplierModal onClose={() => setShowCreate(false)} onCreated={handleCreated} />
+        <CreateSupplierModal onClose={() => setShowCreate(false)} onCreated={() => setShowCreate(false)} />
       )}
     </main>
   );

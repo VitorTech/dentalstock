@@ -11,15 +11,23 @@ import {
   ProcedureSessionBar,
   ProcedureSessionProvider,
 } from "@/modules/clinical/ui/ProcedureSession";
-import { deleteProcedure, listInstruments, listMaterials, listProcedures } from "@/modules/catalog/ui/api";
-import { useMe } from "@/modules/identity/ui/use-me";
-import { isLowStock, type Instrument, type Material, type Procedure } from "@/modules/catalog/domain";
+import {
+  useDeleteProcedure,
+  useInstruments,
+  useMaterials,
+  useProcedures,
+} from "@/modules/catalog/ui/queries";
+import { useMe } from "@/modules/identity/ui/queries";
+import { isLowStock, type Procedure } from "@/modules/catalog/domain";
 
 /**
  * Background revalidation interval. Sixty seconds is generous for a clinic's
  * stock and cuts the traffic of the previous cycle by four.
  */
 const REFRESH_INTERVAL_MS = 60_000;
+
+/** Pause between keystrokes before the search hits the server. */
+const SEARCH_DEBOUNCE_MS = 220;
 
 export default function Home() {
   // The provider must wrap this whole screen: both the cards (which mark
@@ -33,100 +41,50 @@ export default function Home() {
 
 function ProceduresScreen() {
   const { canManage, canSeeCosts } = useMe();
-  const [procedures, setProcedures] = useState<Procedure[]>([]);
-  const [allMaterials, setAllMaterials] = useState<Material[]>([]);
-  const [allInstruments, setAllInstruments] = useState<Instrument[]>([]);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showCreateProcedure, setShowCreateProcedure] = useState(false);
 
-  const loadData = async () => {
-    const [procData, matData, instData] = await Promise.all([
-      listProcedures(),
-      listMaterials(),
-      listInstruments(),
-    ]);
-    setProcedures(procData);
-    setAllMaterials(matData);
-    setAllInstruments(instData);
-    setLoading(false);
-  };
-
+  // Typing is debounced before it becomes a query key, so a five-letter search
+  // is one request instead of five cache entries.
   useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    const t = setTimeout(async () => {
-      setProcedures(await listProcedures(query));
-    }, 220);
+    const t = setTimeout(() => setDebouncedQuery(query), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [query]);
 
+  const { data: procedures = [], isLoading: loading } = useProcedures(debouncedQuery);
+  const deleteProcedure = useDeleteProcedure();
+
   /**
-   * Keeps material and instrument balances fresh in the background, so the
-   * "add" pickers show real stock.
+   * Material and instrument balances refresh in the background, so the "add"
+   * pickers show real stock.
    *
-   * Two decisions that came from measurement: the refresh STOPS while the tab
-   * is hidden — a front desk leaves this screen open all day, and the old
-   * timer produced 480 pairs of requests per hour with nobody looking — and it
-   * runs again as soon as the tab is focused, which is exactly when stale data
-   * would start to matter.
+   * Both behaviours below used to be hand-written here: an interval guarded by
+   * `document.hidden` plus a `visibilitychange` listener. They came from a
+   * measurement — a front desk leaves this screen open all day, and the naive
+   * timer produced 480 pairs of requests per hour with nobody looking. The
+   * reasoning survives as two options: polling stops while the tab is hidden,
+   * and focus revalidates immediately.
    */
-  useEffect(() => {
-    const atualizar = async () => {
-      if (document.hidden) return;
-      setAllMaterials(await listMaterials());
-      setAllInstruments(await listInstruments());
-    };
-
-    const interval = setInterval(atualizar, REFRESH_INTERVAL_MS);
-
-    // Coming back to the tab revalidates at once, without waiting for the cycle.
-    const aoVoltar = () => {
-      if (!document.hidden) atualizar();
-    };
-    document.addEventListener("visibilitychange", aoVoltar);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", aoVoltar);
-    };
-  }, []);
-
-  const handleMaterialCreated = (material: Material) => {
-    setAllMaterials((prev) =>
-      [...prev, material].sort((a, b) => a.name.localeCompare(b.name))
-    );
-  };
-
-  const handleInstrumentCreated = (instrument: Instrument) => {
-    setAllInstruments((prev) =>
-      [...prev, instrument].sort((a, b) => a.name.localeCompare(b.name))
-    );
-  };
+  const { data: allMaterials = [] } = useMaterials({ refetchIntervalMs: REFRESH_INTERVAL_MS });
+  const { data: allInstruments = [] } = useInstruments({
+    refetchIntervalMs: REFRESH_INTERVAL_MS,
+  });
 
   const handleProcedureCreated = (procedure: Procedure) => {
     // Clears the search so the new procedure shows up, and opens its specialty
     // plus the card itself so the user can add materials.
     setQuery("");
-    setProcedures((prev) =>
-      [...prev, procedure].sort((a, b) => a.name.localeCompare(b.name))
-    );
     setExpandedCategory(procedure.category?.trim() || "Outros");
     setExpandedId(procedure.id);
     setShowCreateProcedure(false);
   };
 
-  const handleDeleteProcedure = async (id: string) => {
-    await deleteProcedure(id);
-    setProcedures((prev) => prev.filter((p) => p.id !== id));
-  };
+  const handleDeleteProcedure = (id: string) => deleteProcedure.mutateAsync(id);
 
   const handleProcedureDuplicated = (procedure: Procedure) => {
-    setProcedures((prev) => [...prev, procedure].sort((a, b) => a.name.localeCompare(b.name)));
     // Opens the copy right away: renaming and adjusting items is the next step.
     setExpandedCategory(procedure.category?.trim() || "Outros");
     setExpandedId(procedure.id);
@@ -134,10 +92,7 @@ function ProceduresScreen() {
 
   const handleDeleteSpecialty = async (category: string) => {
     const inCategory = procedures.filter((p) => (p.category?.trim() || "Outros") === category);
-    await Promise.all(inCategory.map((p) => deleteProcedure(p.id)));
-    setProcedures((prev) =>
-      prev.filter((p) => (p.category?.trim() || "Outros") !== category)
-    );
+    await Promise.all(inCategory.map((p) => deleteProcedure.mutateAsync(p.id)));
   };
 
   const existingCategories = useMemo(
@@ -254,8 +209,6 @@ function ProceduresScreen() {
                 allInstruments={allInstruments}
                 expandedId={expandedId}
                 onToggleProcedure={(id) => setExpandedId((cur) => (cur === id ? null : id))}
-                onMaterialCreated={handleMaterialCreated}
-                onInstrumentCreated={handleInstrumentCreated}
                 onDeleteProcedure={handleDeleteProcedure}
                 onDeleteSpecialty={() => handleDeleteSpecialty(category)}
                 onProcedureDuplicated={handleProcedureDuplicated}
@@ -265,7 +218,7 @@ function ProceduresScreen() {
         )}
       </section>
 
-      <ProcedureSessionBar canSeeCosts={canSeeCosts} onFinalized={setAllMaterials} />
+      <ProcedureSessionBar canSeeCosts={canSeeCosts} />
 
       {showCreateProcedure && (
         <CreateProcedureModal

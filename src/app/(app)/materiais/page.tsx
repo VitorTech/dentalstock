@@ -9,33 +9,26 @@ import MaterialStockRow from "@/modules/inventory/ui/MaterialStockRow";
 import { CreateMaterialForm } from "@/modules/catalog/ui/AddMaterialModal";
 import ErrorBanner from "@/shared/ui/ErrorBanner";
 import { ApiError } from "@/shared/ui/api-client";
-import { listMaterials, listSuppliers, updateMaterial, type MaterialPatch } from "@/modules/catalog/ui/api";
-import { useMe } from "@/modules/identity/ui/use-me";
+import type { MaterialPatch } from "@/modules/catalog/ui/api";
+import { useMaterials, useSuppliers, useUpdateMaterial } from "@/modules/catalog/ui/queries";
+import { useMe } from "@/modules/identity/ui/queries";
 import FilterChip from "@/shared/ui/FilterChip";
-import { isLowStock, type Material, type Supplier } from "@/modules/catalog/domain";
+import { isLowStock } from "@/modules/catalog/domain";
 import { needsExpiryAttention } from "@/modules/inventory/domain";
 
 type Filter = "all" | "low" | "expiring";
 
 export default function MateriaisPage() {
   const { canManage, canSeeCosts } = useMe();
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const { data: materials = [], isLoading: loading } = useMaterials();
+  const { data: suppliers = [] } = useSuppliers();
+  const updateMaterial = useUpdateMaterial();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
-    const [mats, sups] = await Promise.all([listMaterials(), listSuppliers()]);
-    setMaterials(mats);
-    setSuppliers(sups);
-    setLoading(false);
-  };
-
   useEffect(() => {
-    loadData();
     // Turns the filter on automatically when arriving from the header notice
     // (/materiais?status=baixa or ?status=validade).
     const params = new URLSearchParams(window.location.search);
@@ -64,25 +57,17 @@ export default function MateriaisPage() {
   );
   const expiringCount = useMemo(() => materials.filter((m) => needsExpiryAttention(m)).length, [materials]);
 
-  const replaceMaterial = (updated: Material) =>
-    setMaterials((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-
   /** Shows the server message: a write that fails silently misleads the user. */
   const report = (e: unknown) =>
     setError(e instanceof ApiError ? e.message : "Não foi possível concluir a operação.");
 
-  const handleUpdate = async (id: string, data: MaterialPatch) => {
+  const handleUpdate = async (id: string, patch: MaterialPatch) => {
     setError(null);
     try {
-      replaceMaterial(await updateMaterial(id, data));
+      await updateMaterial.mutateAsync({ id, patch });
     } catch (e) {
       report(e);
     }
-  };
-
-  const handleCreated = (material: Material) => {
-    setMaterials((prev) => [...prev, material].sort((a, b) => a.name.localeCompare(b.name)));
-    setShowCreateModal(false);
   };
 
   return (
@@ -174,7 +159,6 @@ export default function MateriaisPage() {
                 canManage={canManage}
                 canSeeCosts={canSeeCosts}
                 onUpdate={handleUpdate}
-                onMoved={replaceMaterial}
               />
             ))}
           </div>
@@ -203,7 +187,7 @@ export default function MateriaisPage() {
             <CreateMaterialForm
               initialName=""
               onCancel={() => setShowCreateModal(false)}
-              onCreated={handleCreated}
+              onCreated={() => setShowCreateModal(false)}
             />
           </div>
         </div>

@@ -6,7 +6,7 @@ import Spinner from "@/shared/ui/Spinner";
 import { fmtMoney, fmtQty } from "@/shared/ui/format";
 import type { Material } from "@/modules/catalog/domain";
 import { ApiError } from "@/shared/ui/api-client";
-import { adjustStock, registerEntry } from "./api";
+import { useAdjustStock, useRegisterEntry } from "./queries";
 
 type Mode = "entry" | "adjust";
 
@@ -32,7 +32,8 @@ export default function StockEntryModal({
   canSeeCosts: boolean;
   canAdjust: boolean;
   onClose: () => void;
-  onSaved: (material: Material) => void;
+  /** The caller only closes itself: the updated balances arrive through the cache. */
+  onSaved: () => void;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [quantity, setQuantity] = useState("");
@@ -40,8 +41,10 @@ export default function StockEntryModal({
   const [newStock, setNewStock] = useState(String(material.stock));
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const entry = useRegisterEntry();
+  const adjust = useAdjustStock();
+  const saving = entry.isPending || adjust.isPending;
 
   const parsedQuantity = parseFloat(quantity.replace(",", "."));
   const parsedStock = parseFloat(newStock.replace(",", "."));
@@ -53,27 +56,25 @@ export default function StockEntryModal({
       : Number.isFinite(parsedStock) && parsedStock >= 0 && reason.trim().length >= 3;
 
   const handleSubmit = async () => {
-    setSaving(true);
     setError(null);
     try {
-      const saved =
-        mode === "entry"
-          ? await registerEntry({
-              materialId: material.id,
-              quantity: parsedQuantity,
-              unitCost: parsedCost,
-              note: note.trim() || undefined,
-            })
-          : await adjustStock({
-              materialId: material.id,
-              stock: parsedStock,
-              reason: reason.trim(),
-            });
-      onSaved(saved);
+      if (mode === "entry") {
+        await entry.mutateAsync({
+          materialId: material.id,
+          quantity: parsedQuantity,
+          unitCost: parsedCost,
+          note: note.trim() || undefined,
+        });
+      } else {
+        await adjust.mutateAsync({
+          materialId: material.id,
+          stock: parsedStock,
+          reason: reason.trim(),
+        });
+      }
+      onSaved();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Não foi possível registrar.");
-    } finally {
-      setSaving(false);
     }
   };
 

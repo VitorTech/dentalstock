@@ -1,18 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Boxes, ChevronDown, Download, History, RotateCcw, User, Wrench } from "lucide-react";
 import SiteHeader from "@/app/_shell/SiteHeader";
 import SearchBar from "@/shared/ui/SearchBar";
 import Spinner from "@/shared/ui/Spinner";
 import { useConfirm } from "@/shared/ui/ConfirmProvider";
-import {
-  historyExportUrl,
-  listHistory,
-  reverseExecution,
-  type ExecutionView,
-} from "@/modules/clinical/ui/api";
-import { useMe } from "@/modules/identity/ui/use-me";
+import { historyExportUrl, type ExecutionView } from "@/modules/clinical/ui/api";
+import { useHistory, useReverseExecution } from "@/modules/clinical/ui/queries";
+import { useMe } from "@/modules/identity/ui/queries";
 import { fmtDateTime, fmtMoney } from "@/shared/ui/format";
 import ItemGroup from "@/modules/clinical/ui/ExecutionItemGroup";
 
@@ -27,45 +23,35 @@ const fmtData = fmtDateTime;
 export default function HistoricoPage() {
   const { canManage, canSeeCosts } = useMe();
   const confirm = useConfirm();
-  const [reversing, setReversing] = useState<string | null>(null);
-  const [executions, setExecutions] = useState<ExecutionView[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [days, setDays] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (p: number, q: string, d: number, append: boolean) => {
-      const page = await listHistory({ page: p, query: q, days: d });
-      setExecutions((prev) => (append ? [...prev, ...page.executions] : page.executions));
-      setTotal(page.total);
-      setHasMore(page.hasMore);
-    },
-    []
-  );
-
-  // Search and filters restart pagination.
+  // The search box types faster than the server answers; only the settled
+  // term becomes a query key, so each keystroke is not a request.
   useEffect(() => {
-    const t = setTimeout(async () => {
-      setLoading(true);
-      setPage(1);
-      await load(1, query, days, false);
-      setLoading(false);
-    }, 220);
+    const t = setTimeout(() => setDebouncedQuery(query), 220);
     return () => clearTimeout(t);
-  }, [query, days, load]);
+  }, [query]);
 
-  const loadMore = async () => {
-    setLoadingMore(true);
-    const next = page + 1;
-    await load(next, query, days, true);
-    setPage(next);
-    setLoadingMore(false);
-  };
+  const {
+    data,
+    isLoading: loading,
+    isFetchingNextPage: loadingMore,
+    hasNextPage,
+    fetchNextPage,
+  } = useHistory({ query: debouncedQuery, days });
+
+  const executions = useMemo(() => data?.pages.flatMap((p) => p.executions) ?? [], [data]);
+  const total = data?.pages[0]?.total ?? 0;
+  const hasMore = Boolean(hasNextPage);
+  const loadMore = () => fetchNextPage();
+
+  // A reversal returns materials to stock, so it invalidates the ledger, the
+  // balances and the dashboard — that fan-out lives in the mutation, not here.
+  const reversal = useReverseExecution();
+  const reversing = reversal.isPending ? reversal.variables : null;
 
   const reverse = async (execution: ExecutionView) => {
     const materiais = execution.items.filter((i) => i.kind === "MATERIAL");
@@ -78,25 +64,11 @@ export default function HistoricoPage() {
       tone: "danger",
     });
     if (!ok) return;
-
-    setReversing(execution.id);
-    try {
-      await reverseExecution(execution.id);
-      // Mark it locally instead of reloading the list: scroll position and the
-      // already loaded pages are preserved.
-      setExecutions((prev) =>
-        prev.map((e) =>
-          e.id === execution.id ? { ...e, reversedAt: new Date().toISOString() } : e
-        )
-      );
-    } catch {
-      // A failed reversal leaves the row as it was — the list does not lie.
-    } finally {
-      setReversing(null);
-    }
+    // A failed reversal leaves the row as it was — the list does not lie.
+    reversal.mutate(execution.id);
   };
 
-  const exportUrl = historyExportUrl({ query, days });
+  const exportUrl = historyExportUrl({ query: debouncedQuery, days });
 
   return (
     <main className="bg-canvas">

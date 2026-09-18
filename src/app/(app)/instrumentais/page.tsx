@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Info, Wrench, Plus, X } from "lucide-react";
 import SiteHeader from "@/app/_shell/SiteHeader";
 import SearchBar from "@/shared/ui/SearchBar";
@@ -8,24 +8,14 @@ import InstrumentStockRow from "@/modules/catalog/ui/InstrumentStockRow";
 import { CreateInstrumentForm } from "@/modules/catalog/ui/AddInstrumentModal";
 import ErrorBanner from "@/shared/ui/ErrorBanner";
 import { ApiError } from "@/shared/ui/api-client";
-import { listInstruments, updateInstrument } from "@/modules/catalog/ui/api";
-import type { Instrument } from "@/modules/catalog/domain";
+import { useInstruments, useUpdateInstrumentStock } from "@/modules/catalog/ui/queries";
 
 export default function InstrumentaisPage() {
-  const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const { data: instruments = [], isLoading: loading } = useInstruments();
+  const updateStock = useUpdateInstrumentStock();
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const loadInstruments = async () => {
-    setInstruments(await listInstruments());
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadInstruments();
-  }, []);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return instruments;
@@ -38,15 +28,13 @@ export default function InstrumentaisPage() {
   const handleUpdate = async (id: string, data: { stock: number }) => {
     setError(null);
     try {
-      const updated = await updateInstrument(id, data);
-      setInstruments((prev) => prev.map((i) => (i.id === id ? updated : i)));
+      await updateStock.mutateAsync({ id, stock: data.stock });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Não foi possível salvar.");
     }
   };
 
-  const handleCreated = (instrument: Instrument) => {
-    setInstruments((prev) => [...prev, instrument].sort((a, b) => a.name.localeCompare(b.name)));
+  const handleCreated = () => {
     setShowCreateModal(false);
   };
 

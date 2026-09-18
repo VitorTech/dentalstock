@@ -10,8 +10,6 @@ export default function ProcedureList({
   allInstruments,
   expandedId,
   onToggle,
-  onMaterialCreated,
-  onInstrumentCreated,
   onDeleteProcedure,
   onProcedureDuplicated,
 }: {
@@ -20,8 +18,6 @@ export default function ProcedureList({
   allInstruments: Instrument[];
   expandedId: string | null;
   onToggle: (id: string) => void;
-  onMaterialCreated: (material: Material) => void;
-  onInstrumentCreated: (instrument: Instrument) => void;
   onDeleteProcedure: (id: string) => Promise<void> | void;
   onProcedureDuplicated: (procedure: Procedure) => void;
 }) {
@@ -47,8 +43,6 @@ export default function ProcedureList({
           allInstruments={allInstruments}
           expanded={expandedId === p.id}
           onToggle={() => onToggle(p.id)}
-          onMaterialCreated={onMaterialCreated}
-          onInstrumentCreated={onInstrumentCreated}
           onDelete={() => onDeleteProcedure(p.id)}
           onDuplicated={onProcedureDuplicated}
         />

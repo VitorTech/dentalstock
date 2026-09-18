@@ -4,9 +4,9 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import { CircleCheck, Stethoscope, TriangleAlert, X } from "lucide-react";
 import Spinner from "@/shared/ui/Spinner";
 import { fmtMoney } from "@/shared/ui/format";
-import type { Material } from "@/modules/catalog/domain";
 import type { ShortageDetail } from "@/modules/clinical/domain";
 import { finalizeSession } from "./api";
+import { useFinalizationInvalidator } from "./queries";
 
 export interface SessionEntry {
   procedureId: string;
@@ -78,15 +78,12 @@ type BarState =
  * It only shows up with two or more procedures marked: with a single one the
  * card's own button already does the job, and a fixed bar would be noise.
  */
-export function ProcedureSessionBar({
-  canSeeCosts,
-  onFinalized,
-}: {
-  canSeeCosts: boolean;
-  onFinalized: (materials: Material[]) => void;
-}) {
+export function ProcedureSessionBar({ canSeeCosts }: { canSeeCosts: boolean }) {
   const { entries, clear } = useProcedureSession();
   const [state, setState] = useState<BarState>({ status: "idle" });
+  // Finalizing moved stock: the ledger, the balances and the dashboard are all
+  // stale now, and the cache is what tells every screen about it.
+  const invalidate = useFinalizationInvalidator();
 
   if (entries.length < 2 && state.status !== "success") return null;
 
@@ -106,7 +103,7 @@ export function ProcedureSessionBar({
       return;
     }
 
-    onFinalized(outcome.materials);
+    invalidate();
     setState({ status: "success", procedures: outcome.count, cost: outcome.cost });
     clear();
     window.setTimeout(() => setState({ status: "idle" }), 4000);

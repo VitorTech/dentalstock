@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Monitor, Moon, Palette, Sun, SunMoon } from "lucide-react";
 import SiteHeader from "@/app/_shell/SiteHeader";
 import { ACCENT_PRESETS, DEFAULT_ACCENT, applyTheme, type ThemeMode } from "@/modules/account/ui/theme";
-import { getTenantSettings, updateTenantSettings } from "@/modules/account/ui/api";
+import { useTenantSettings, useUpdateTenantSettings } from "@/modules/account/ui/queries";
 
 const MODES: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Claro", icon: Sun },
@@ -15,24 +15,25 @@ const MODES: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<ThemeMode>("system");
-  const [accent, setAccent] = useState<string>(DEFAULT_ACCENT);
-  const [tenantName, setTenantName] = useState("");
-  const [loading, setLoading] = useState(true);
+  const { data: settings, isLoading: loading } = useTenantSettings();
+  const save = useUpdateTenantSettings();
+
+  /**
+   * The saved preference is server state; what the user just clicked is local
+   * state, because the theme has to apply before the round trip finishes.
+   * The local value wins while it exists, and the query is the fallback.
+   */
+  const [pickedMode, setPickedMode] = useState<ThemeMode | null>(null);
+  const [pickedAccent, setPickedAccent] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    getTenantSettings().then((t) => {
-      if (t?.themeMode) setMode(t.themeMode);
-      if (t?.accentColor) setAccent(t.accentColor);
-      if (t?.name) setTenantName(t.name);
-      setLoading(false);
-    });
-  }, []);
+  const mode = pickedMode ?? settings?.themeMode ?? "system";
+  const accent = pickedAccent ?? settings?.accentColor ?? DEFAULT_ACCENT;
+  const tenantName = settings?.name ?? "";
 
   const persist = async (patch: { themeMode?: ThemeMode; accentColor?: string }) => {
     try {
-      await updateTenantSettings(patch);
+      await save.mutateAsync(patch);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1500);
       // re-reads the layout on the server so the theme applies across navigation
@@ -44,13 +45,13 @@ export default function ConfiguracoesPage() {
   };
 
   const handleMode = (m: ThemeMode) => {
-    setMode(m);
+    setPickedMode(m);
     applyTheme(m, accent);
     persist({ themeMode: m });
   };
 
   const handleAccent = (color: string) => {
-    setAccent(color);
+    setPickedAccent(color);
     applyTheme(mode, color);
     persist({ accentColor: color });
   };

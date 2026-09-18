@@ -4,9 +4,9 @@ import { useState } from "react";
 import { TriangleAlert, X } from "lucide-react";
 import Spinner from "@/shared/ui/Spinner";
 import type { UserRole } from "@/shared/domain";
-import { ROLE_HINT, type TeamUser } from "./team";
+import { ROLE_HINT } from "./team";
 import { ApiError } from "@/shared/ui/api-client";
-import { inviteMember } from "./api";
+import { useInviteMember } from "./queries";
 
 /** Form used to invite a new team member. */
 export default function InviteForm({
@@ -14,28 +14,24 @@ export default function InviteForm({
   onCreated,
 }: {
   onCancel: () => void;
-  onCreated: (user: TeamUser) => void;
+  onCreated: () => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("ASSISTANT");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // The mutation owns the in-flight state and refreshes the team list; the
+  // form only has to say what to send and what to show if it is refused.
+  const invite = useInviteMember(onCreated);
+  const saving = invite.isPending;
+  const error = invite.error
+    ? invite.error instanceof ApiError
+      ? invite.error.message
+      : "Não foi possível criar o acesso."
+    : null;
 
-  const submit = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      onCreated(
-        await inviteMember({ name: name.trim(), email: email.trim(), password, role })
-      );
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Não foi possível criar o acesso.");
-    } finally {
-      setSaving(false);
-    }
-  };
+  const submit = () =>
+    invite.mutate({ name: name.trim(), email: email.trim(), password, role });
 
   return (
     <div className="rounded-xl2 border border-hairline bg-surface p-4 shadow-card">

@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import Spinner from "@/shared/ui/Spinner";
 import type { Procedure } from "@/modules/catalog/domain";
 import { ApiError } from "@/shared/ui/api-client";
-import { createProcedure } from "./api";
+import { useCreateProcedure } from "./queries";
 
 export default function CreateProcedureModal({
   categories,
@@ -19,7 +19,8 @@ export default function CreateProcedureModal({
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const create = useCreateProcedure();
+  const submitting = create.isPending;
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,10 +36,9 @@ export default function CreateProcedureModal({
       setError("Nome do procedimento é obrigatório.");
       return;
     }
-    setSubmitting(true);
     try {
       onCreated(
-        await createProcedure({
+        await create.mutateAsync({
           name: name.trim(),
           category: category.trim() || null,
           description: description.trim() || null,
@@ -46,8 +46,6 @@ export default function CreateProcedureModal({
       );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Não foi possível criar o procedimento.");
-    } finally {
-      setSubmitting(false);
     }
   };
 

@@ -29,7 +29,6 @@ export default function MaterialStockRow({
   canManage,
   canSeeCosts,
   onUpdate,
-  onMoved,
 }: {
   material: Material;
   suppliers: Supplier[];
@@ -44,7 +43,6 @@ export default function MaterialStockRow({
       expiresAt?: string | null;
     }
   ) => Promise<void> | void;
-  onMoved: (material: Material) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [movingMode, setMovingMode] = useState<"entry" | "adjust" | null>(null);
@@ -241,10 +239,7 @@ export default function MaterialStockRow({
           canSeeCosts={canSeeCosts}
           canAdjust={canManage}
           onClose={() => setMovingMode(null)}
-          onSaved={(updated) => {
-            onMoved(updated);
-            setMovingMode(null);
-          }}
+          onSaved={() => setMovingMode(null)}
         />
       )}
     </div>

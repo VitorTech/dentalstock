@@ -24,7 +24,7 @@ src/
 │   └── http/route.ts     route(access, handler): explicit, mandatory access per route
 ├── modules/              one directory per business context (below)
 ├── shared/               common base for every module (knows none of them)
-└── middleware.ts         redirects whoever has no session cookie (no database access)
+└── middleware.ts         session-cookie gate + Content-Security-Policy nonce (no database access)
 ```
 
 ### Modules and dependency order
@@ -65,6 +65,9 @@ modules/<name>/
 │   ├── in/http/          presenters (entity → JSON) and parameter reading
 │   └── out/prisma/       repositories and mappers (implement the ports)
 └── ui/                   the module's React components and hooks (client)
+    ├── api.ts            transport: endpoints and wire types
+    ├── queries.ts        cache: query keys, read hooks, invalidation on write
+    └── internal/         private to the feature (arch rule blocks outsiders)
 ```
 
 | Layer          | May import                                                  | Must not import                                    |
@@ -96,7 +99,8 @@ SearchBar, ErrorBanner, formatting).
 ```
 src/app/(app)/materiais/page.tsx     COMPOSITION: screen layout, page state
   ├── modules/inventory/ui/MaterialStockRow.tsx     feature component
-  ├── modules/inventory/ui/api.ts                   ← operations and wire contracts
+  ├── modules/inventory/ui/api.ts                   ← transport: URL, body, wire types
+  ├── modules/inventory/ui/queries.ts               ← cache: keys, hooks, invalidation
   └── shared/ui/{SearchBar,ErrorBanner,format}      generic, no business rule
 ```
 
@@ -117,6 +121,40 @@ Screens call `listMaterials()` or `registerEntry(...)`, never
   the user believe it was saved.
 - This is enforced: ESLint refuses `fetch` outside `ui/api.ts`, and refuses
   `apiGet`/`apiSend` outside that layer.
+
+### Server state is cache, not component state
+
+`ui/queries.ts` sits next to `api.ts` and holds the **TanStack Query** layer:
+query keys, the read hooks and what each write invalidates. The split is
+deliberate — `api.ts` says *what the endpoint is*, `queries.ts` says *when an
+answer may be reused and what stops being true after a write*.
+
+The reasoning, all of it measured on the running app:
+
+- **Deduplication.** `useMe` is read by the header, by the page and by every
+  procedure card. It used to be a hand-written module cache with a shared
+  in-flight promise, because without one, opening a specialty with twelve
+  procedures fired fourteen identical requests. That is exactly what a query
+  cache does, so the hand-rolled version is gone and its reasoning survives as
+  configuration: one key, `staleTime: Infinity`, no refetch on mount.
+- **Polling that stops when nobody is looking.** The procedures screen
+  revalidates balances in the background. The previous version was an interval
+  plus a `visibilitychange` listener written by hand; a front desk leaves the
+  screen open all day and the naive timer produced hundreds of requests an hour
+  with the tab hidden. Now it is `refetchInterval` +
+  `refetchIntervalInBackground: false`, plus revalidation on focus.
+- **Invalidation instead of hand patching.** A stock entry changes a balance
+  shown on three screens. Every mutation invalidates by key; no screen splices
+  arrays, because "the material was created but the list still shows the old
+  one" comes from exactly that.
+- **Pagination as an infinite query.** The ledger and the history load more
+  pages into the same cache entry, so returning from a detail screen does not
+  start the list over.
+- **Errors keep their meaning.** Retries skip 4xx: a 403 will not become a 200
+  by asking three more times. And finalization is *not* a `useMutation` — its
+  409 is an expected outcome (the transaction was refused for lack of stock,
+  and the answer lists what is missing), so it is modelled as a result, not an
+  error.
 
 ### A public boundary without barrels
 
@@ -160,10 +198,24 @@ fetch("/api/materials/123", PATCH)
   text), because on the client a date arrives over JSON.
 - **JWT HS256 in an httpOnly cookie**, with a persisted session as the
   revocation anchor.
-- **Brute force on login is contained by a counter, not a CAPTCHA**: two keys
-  (account and IP), different limits, a short block that clears itself. The
-  per-account limit is deliberately generous — tightening it would turn the
-  defense into a denial of service against the legitimate user.
+- **Brute force is contained by a counter, not a CAPTCHA**: two keys (account
+  and IP), different limits, a short block that clears itself. The per-account
+  limit is deliberately generous — tightening it would turn the defense into a
+  denial of service against the legitimate user. The counter is a **generic
+  policy in `shared/domain`** with a single table behind it, so the login limit
+  and the per-origin write budget are the same primitive with different
+  thresholds.
+- **The route helper carries the cross-cutting security.** CSRF (`Origin`
+  check), the write budget, `Cache-Control: no-store` on authenticated
+  responses and the logging of every 401/403/429 run inside
+  `route(access, handler)` — a new endpoint inherits them without its author
+  remembering. The same helper absorbed Next 15 turning `params` into a
+  Promise: one file changed, no dynamic route did.
+- **A CSP with a real nonce, at the cost of static rendering.** The nonce is
+  minted per request in the middleware, which makes every page dynamic. The
+  alternative — `'unsafe-inline'`, so Next's inline scripts keep working —
+  would let any injected script run and turn the header into decoration. A few
+  milliseconds of TTFB on the landing page is the cheaper side of that trade.
 - **`server-only`** in `container.ts`: importing the server from a client
   component breaks the build instead of leaking in production.
 
@@ -178,6 +230,7 @@ fetch("/api/materials/123", PATCH)
 | an endpoint                                   | `app/api/…/route.ts` with `route(access, …)` + a presenter        |
 | a component for one area                      | `modules/<m>/ui/`                                                  |
 | to call an endpoint                           | a function in `modules/<m>/ui/api.ts` (+ the response type)       |
+| to cache or invalidate that answer            | a key and a hook in `modules/<m>/ui/queries.ts`                    |
 | an internal detail of a component             | `modules/<m>/ui/internal/`                                         |
 | a generic component (no business rule)        | `shared/ui/`                                                       |
 | a screen                                      | `app/(app)/<route>/page.tsx`, composing module components          |
@@ -189,7 +242,7 @@ adapter → container → route → presenter.
 ## Conventions
 
 - React components: `PascalCase.tsx`. Every other file: `kebab-case.ts`
-  (`use-me.ts`, `stock-movement.repository.ts`).
+  (`stock-movement.repository.ts`, `use-finalize-procedure.ts`).
 - Hooks: `use-*.ts`, exporting `useSomething`.
 - Tests next to the code: `*.test.ts`. No call mocks — ports are interfaces, so
   the tests use in-memory implementations and check the **effect** (what was

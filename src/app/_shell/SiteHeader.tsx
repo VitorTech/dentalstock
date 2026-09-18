@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Menu as MenuIcon } from "lucide-react";
 import NavDrawer from "./NavDrawer";
 import ToothIcon from "@/shared/ui/ToothIcon";
-import { useMe } from "@/modules/identity/ui/use-me";
+import { useMe } from "@/modules/identity/ui/queries";
 
 /**
  * Header shared by every internal screen.

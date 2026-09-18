@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { KeyRound, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
 import SiteHeader from "@/app/_shell/SiteHeader";
 import { useConfirm } from "@/shared/ui/ConfirmProvider";
 import ErrorBanner from "@/shared/ui/ErrorBanner";
 import { ApiError } from "@/shared/ui/api-client";
 import {
-  changeMemberRole,
-  listTeam,
-  removeMember,
-  resetMemberPassword,
-} from "@/modules/identity/ui/api";
-import { useMe } from "@/modules/identity/ui/use-me";
+  useChangeMemberRole,
+  useMe,
+  useRemoveMember,
+  useResetMemberPassword,
+  useTeam,
+} from "@/modules/identity/ui/queries";
 import type { UserRole } from "@/shared/domain";
 import InviteForm from "@/modules/identity/ui/InviteForm";
 import { ROLE_HINT, ROLE_LABEL, type TeamUser } from "@/modules/identity/ui/team";
@@ -21,19 +21,28 @@ import { ROLE_HINT, ROLE_LABEL, type TeamUser } from "@/modules/identity/ui/team
 export default function EquipePage() {
   const { me, canManage, loading: loadingMe } = useMe();
   const confirm = useConfirm();
-  const [users, setUsers] = useState<TeamUser[]>([]);
-  const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
-    setUsers(await listTeam());
-    setLoading(false);
-  };
+  const { data: users = [], isLoading: loading } = useTeam();
 
-  useEffect(() => {
-    load();
-  }, []);
+  /**
+   * Every write refreshes the list through its own mutation instead of
+   * patching the array here. Role changes end the member's open sessions on
+   * the server, so a stale local copy would be a lie about who can do what.
+   */
+  const roleChange = useChangeMemberRole();
+  const passwordReset = useResetMemberPassword();
+  const removal = useRemoveMember();
+
+  const run = async (action: Promise<unknown>, fallback: string) => {
+    setError(null);
+    try {
+      await action;
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : fallback);
+    }
+  };
 
   const changeRole = async (user: TeamUser, role: UserRole) => {
     const ok = await confirm({
@@ -42,26 +51,16 @@ export default function EquipePage() {
       confirmLabel: "Alterar",
     });
     if (!ok) return;
-
-    setError(null);
-    try {
-      await changeMemberRole(user.id, role);
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role } : u)));
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Não foi possível alterar o papel.");
-    }
+    run(roleChange.mutateAsync({ userId: user.id, role }), "Não foi possível alterar o papel.");
   };
 
   const resetPassword = async (user: TeamUser) => {
     const password = window.prompt(`Nova senha para ${user.name} (mínimo 8 caracteres):`);
     if (!password) return;
-
-    setError(null);
-    try {
-      await resetMemberPassword(user.id, password);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Não foi possível redefinir a senha.");
-    }
+    run(
+      passwordReset.mutateAsync({ userId: user.id, password }),
+      "Não foi possível redefinir a senha."
+    );
   };
 
   const remove = async (user: TeamUser) => {
@@ -72,14 +71,7 @@ export default function EquipePage() {
       tone: "danger",
     });
     if (!ok) return;
-
-    setError(null);
-    try {
-      await removeMember(user.id);
-      setUsers((prev) => prev.filter((u) => u.id !== user.id));
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Não foi possível remover o acesso.");
-    }
+    run(removal.mutateAsync(user.id), "Não foi possível remover o acesso.");
   };
 
   if (!loadingMe && !canManage) {
@@ -120,10 +112,7 @@ export default function EquipePage() {
           {inviting ? (
             <InviteForm
               onCancel={() => setInviting(false)}
-              onCreated={(user) => {
-                setUsers((prev) => [...prev, user].sort((a, b) => a.name.localeCompare(b.name)));
-                setInviting(false);
-              }}
+              onCreated={() => setInviting(false)}
             />
           ) : (
             <button

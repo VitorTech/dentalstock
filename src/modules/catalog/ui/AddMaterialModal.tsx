@@ -6,7 +6,7 @@ import Spinner from "@/shared/ui/Spinner";
 import MaterialImage from "./MaterialImage";
 import type { Material } from "@/modules/catalog/domain";
 import { ApiError } from "@/shared/ui/api-client";
-import { createMaterial } from "./api";
+import { useCreateMaterial } from "./queries";
 
 const COMMON_UNITS = ["un", "par", "ml", "g", "kg", "l", "tubete", "rolete"];
 
@@ -15,13 +15,11 @@ export default function AddMaterialModal({
   excludeIds,
   onClose,
   onAdd,
-  onMaterialCreated,
 }: {
   allMaterials: Material[];
   excludeIds: string[];
   onClose: () => void;
   onAdd: (materialId: string, quantity: number) => Promise<void> | void;
-  onMaterialCreated: (material: Material) => void;
 }) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -53,7 +51,6 @@ export default function AddMaterialModal({
   };
 
   const handleCreated = (material: Material) => {
-    onMaterialCreated(material);
     setShowCreateForm(false);
     setQuery("");
     setSelectedId(material.id);
@@ -186,8 +183,9 @@ export function CreateMaterialForm({
   const [stock, setStock] = useState(0);
   const [minStock, setMinStock] = useState(0);
   const [imageUrl, setImageUrl] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const create = useCreateMaterial();
+  const submitting = create.isPending;
 
   const previewMaterial = { name: name || "Novo material", imageUrl: imageUrl || null };
 
@@ -197,10 +195,9 @@ export function CreateMaterialForm({
       setError("Nome e unidade são obrigatórios.");
       return;
     }
-    setSubmitting(true);
     try {
       onCreated(
-        await createMaterial({
+        await create.mutateAsync({
           name: name.trim(),
           unit: unit.trim(),
           category: category.trim() || null,
@@ -211,8 +208,6 @@ export function CreateMaterialForm({
       );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Não foi possível cadastrar o material.");
-    } finally {
-      setSubmitting(false);
     }
   };
 

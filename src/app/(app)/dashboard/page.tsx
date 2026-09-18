@@ -1,25 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BarChart3, Boxes, CalendarClock, CircleDollarSign, PackageX, Stethoscope, TrendingUp, Truck, TriangleAlert } from "lucide-react";
 import SiteHeader from "@/app/_shell/SiteHeader";
 import BarList, { type BarItem } from "@/modules/analytics/ui/BarList";
 import AreaChart from "@/modules/analytics/ui/AreaChart";
-import { getDashboard, type DashboardView } from "@/modules/analytics/ui/api";
+import { useDashboard } from "@/modules/analytics/ui/queries";
 import { fmtDate, fmtMoney, fmtQty } from "@/shared/ui/format";
 import { Kpi, EmptyMini } from "@/modules/analytics/ui/Kpi";
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardView | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getDashboard().then((d) => {
-      setData(d);
-      setLoading(false);
-    });
-  }, []);
+  // Read-only screen: the query cache is the whole state. Coming back from
+  // /materiais shows the last figures immediately and revalidates behind them.
+  const { data, isLoading: loading } = useDashboard();
 
   // Ranking by REAL consumption only (finalizations). A clinic that never
   // finalized a procedure shows zeros instead of theoretical demand.

@@ -16,8 +16,6 @@ export default function SpecialtyGroup({
   allInstruments,
   expandedId,
   onToggleProcedure,
-  onMaterialCreated,
-  onInstrumentCreated,
   onDeleteProcedure,
   onDeleteSpecialty,
   onProcedureDuplicated,
@@ -30,8 +28,6 @@ export default function SpecialtyGroup({
   allInstruments: Instrument[];
   expandedId: string | null;
   onToggleProcedure: (id: string) => void;
-  onMaterialCreated: (material: Material) => void;
-  onInstrumentCreated: (instrument: Instrument) => void;
   onDeleteProcedure: (id: string) => Promise<void> | void;
   onDeleteSpecialty: () => Promise<void> | void;
   onProcedureDuplicated: (procedure: Procedure) => void;
@@ -88,9 +84,7 @@ export default function SpecialtyGroup({
             allInstruments={allInstruments}
             expandedId={expandedId}
             onToggle={onToggleProcedure}
-            onMaterialCreated={onMaterialCreated}
-            onInstrumentCreated={onInstrumentCreated}
-            onDeleteProcedure={onDeleteProcedure}
+                onDeleteProcedure={onDeleteProcedure}
             onProcedureDuplicated={onProcedureDuplicated}
           />
 

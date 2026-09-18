@@ -6,20 +6,18 @@ import Spinner from "@/shared/ui/Spinner";
 import MaterialImage from "./MaterialImage";
 import type { Instrument } from "@/modules/catalog/domain";
 import { ApiError } from "@/shared/ui/api-client";
-import { createInstrument } from "./api";
+import { useCreateInstrument } from "./queries";
 
 export default function AddInstrumentModal({
   allInstruments,
   excludeIds,
   onClose,
   onAdd,
-  onInstrumentCreated,
 }: {
   allInstruments: Instrument[];
   excludeIds: string[];
   onClose: () => void;
   onAdd: (instrumentId: string, quantity: number) => Promise<void> | void;
-  onInstrumentCreated: (instrument: Instrument) => void;
 }) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -51,7 +49,6 @@ export default function AddInstrumentModal({
   };
 
   const handleCreated = (instrument: Instrument) => {
-    onInstrumentCreated(instrument);
     setShowCreateForm(false);
     setQuery("");
     setSelectedId(instrument.id);
@@ -183,8 +180,9 @@ export function CreateInstrumentForm({
   // counted its inventory yet.
   const [stock, setStock] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const create = useCreateInstrument();
+  const submitting = create.isPending;
 
   const previewInstrument = { name: name || "Novo instrumental", imageUrl: imageUrl || null };
 
@@ -194,10 +192,9 @@ export function CreateInstrumentForm({
       setError("Nome é obrigatório.");
       return;
     }
-    setSubmitting(true);
     try {
       onCreated(
-        await createInstrument({
+        await create.mutateAsync({
           name: name.trim(),
           category: category.trim() || null,
           imageUrl: imageUrl.trim() || null,
@@ -207,8 +204,6 @@ export function CreateInstrumentForm({
       );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Não foi possível cadastrar o instrumental.");
-    } finally {
-      setSubmitting(false);
     }
   };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import SiteHeader from "@/app/_shell/SiteHeader";
 import Spinner from "@/shared/ui/Spinner";
-import { listMovements, type StockMovementView } from "@/modules/inventory/ui/api";
-import { useMe } from "@/modules/identity/ui/use-me";
+import { useMovements } from "@/modules/inventory/ui/queries";
+import { useMe } from "@/modules/identity/ui/queries";
 import { fmtDateTime, fmtMoney, fmtQty } from "@/shared/ui/format";
 import type { StockMovementType } from "@/modules/inventory/domain";
 
@@ -43,15 +43,9 @@ const PERIODS = [
 
 export default function MovimentacoesPage() {
   const { canSeeCosts } = useMe();
-  const [movements, setMovements] = useState<StockMovementView[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [page, setPage] = useState(1);
   const [type, setType] = useState<StockMovementType | "">("");
   const [days, setDays] = useState(0);
   const [materialId, setMaterialId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   // Arriving from /materiais, the ledger is already scoped to one material.
   useEffect(() => {
@@ -59,42 +53,23 @@ export default function MovimentacoesPage() {
     setMaterialId(params.get("materialId"));
   }, []);
 
-  const load = useCallback(
-    async (p: number, t: string, d: number, mat: string | null, append: boolean) => {
-      const page = await listMovements({
-        page: p,
-        days: d,
-        type: t as StockMovementType | "",
-        materialId: mat,
-      });
+  /**
+   * Pagination is `useInfiniteQuery`: "load more" is exactly what it models,
+   * and the loaded pages stay in cache, so coming back from a material's
+   * ledger does not start the list over.
+   */
+  const {
+    data,
+    isLoading: loading,
+    isFetchingNextPage: loadingMore,
+    hasNextPage,
+    fetchNextPage,
+  } = useMovements({ days, type, materialId });
 
-      setMovements((prev) => (append ? [...prev, ...page.movements] : page.movements));
-      setTotal(page.total);
-      setHasMore(page.hasMore);
-    },
-    []
-  );
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      setLoading(true);
-      setPage(1);
-      await load(1, type, days, materialId, false);
-      if (active) setLoading(false);
-    })();
-    return () => {
-      active = false;
-    };
-  }, [type, days, materialId, load]);
-
-  const loadMore = async () => {
-    setLoadingMore(true);
-    const next = page + 1;
-    await load(next, type, days, materialId, true);
-    setPage(next);
-    setLoadingMore(false);
-  };
+  const movements = useMemo(() => data?.pages.flatMap((p) => p.movements) ?? [], [data]);
+  const total = data?.pages[0]?.total ?? 0;
+  const hasMore = Boolean(hasNextPage);
+  const loadMore = () => fetchNextPage();
 
   const materialName = materialId ? movements[0]?.materialName : null;
 

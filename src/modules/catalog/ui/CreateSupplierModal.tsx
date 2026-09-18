@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import Spinner from "@/shared/ui/Spinner";
 import type { Supplier } from "@/modules/catalog/domain";
 import { ApiError } from "@/shared/ui/api-client";
-import { createSupplier } from "./api";
+import { useCreateSupplier } from "./queries";
 
 /** Supplier registration modal. */
 export default function CreateSupplierModal({
@@ -19,7 +19,8 @@ export default function CreateSupplierModal({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const create = useCreateSupplier();
+  const submitting = create.isPending;
   const [error, setError] = useState("");
 
   const inputClass =
@@ -31,13 +32,10 @@ export default function CreateSupplierModal({
       setError("Nome é obrigatório.");
       return;
     }
-    setSubmitting(true);
     try {
-      onCreated(await createSupplier({ name, phone, email, notes }));
+      onCreated(await create.mutateAsync({ name, phone, email, notes }));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Não foi possível cadastrar o fornecedor.");
-    } finally {
-      setSubmitting(false);
     }
   };
 

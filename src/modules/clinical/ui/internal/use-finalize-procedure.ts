@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Material, ProcedureMaterial } from "@/modules/catalog/domain";
+import type { ProcedureMaterial } from "@/modules/catalog/domain";
 import { finalizeProcedure } from "../api";
+import { useFinalizationInvalidator } from "../queries";
 import type { ShortageDetail } from "@/modules/clinical/domain";
 
 export type FinalizeState =
@@ -25,14 +26,12 @@ const SUCCESS_VISIBLE_MS = 2600;
 export function useFinalizeProcedure({
   procedureId,
   materials,
-  onStockUpdated,
 }: {
   procedureId: string;
   materials: ProcedureMaterial[];
-  /** Receives the updated balances of every deducted material. */
-  onStockUpdated: (materials: Material[]) => void;
 }) {
   const [state, setState] = useState<FinalizeState>({ status: "idle" });
+  const invalidate = useFinalizationInvalidator();
 
   useEffect(() => {
     if (state.status !== "success") return;
@@ -49,7 +48,7 @@ export function useFinalizeProcedure({
     });
 
     if (outcome.status === "ok") {
-      onStockUpdated(outcome.materials);
+      invalidate();
       setState({ status: "success", cost: outcome.cost });
       return;
     }
